@@ -1,0 +1,2099 @@
+```html
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>藤井寺市民音楽団 - 出席予定・日程管理</title>
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Meiryo', 'sans-serif'],
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    /* 横スクロール時の左端日程列固定 */
+    .sticky-col {
+      position: sticky;
+      left: 0;
+      z-index: 10;
+      box-shadow: 2px 0 6px -2px rgba(15, 23, 42, 0.12);
+    }
+    /* 縦スクロール時のヘッダー固定 */
+    .sticky-header {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+    }
+    /* 左上交差セルの最前面固定 */
+    .sticky-corner {
+      position: sticky;
+      left: 0;
+      z-index: 30;
+      box-shadow: 2px 0 6px -2px rgba(15, 23, 42, 0.12);
+    }
+    /* スマホ操作時のタップハイライト最適化 */
+    body {
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+    input, select, textarea, pre {
+      user-select: auto;
+    }
+    /* カスタムスクロールバー */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans pb-24 overflow-x-hidden">
+
+  <!-- ======================================================== -->
+  <!-- ヘッダー / グローバルナビゲーション -->
+  <!-- ======================================================== -->
+  <header class="bg-emerald-700 text-white shadow-md sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-3 sm:px-4 py-2.5 flex justify-between items-center gap-2">
+      <div class="flex items-center space-x-2.5 min-w-0">
+        <div class="bg-emerald-800/80 p-2 rounded-xl border border-emerald-500/40 shrink-0">
+          <i class="fa-solid fa-music text-lg text-emerald-200"></i>
+        </div>
+        <div class="min-w-0">
+          <h1 class="font-bold text-base sm:text-lg leading-tight truncate">
+            藤井寺市民音楽団
+            <span class="text-[11px] font-normal text-emerald-200 block sm:inline sm:ml-1">出席予定・日程管理</span>
+          </h1>
+          <!-- Firebase リアルタイム同期ステータス -->
+          <div id="sync-status-badge" class="mt-0.5">
+            <span class="bg-amber-500/30 text-amber-100 text-[10px] px-2.5 py-0.5 rounded-full border border-amber-300/30 inline-flex items-center gap-1">
+              🟡 接続中...
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- データバックアップ・復元ボタン -->
+      <button type="button" onclick="openBackupModal()" class="shrink-0 text-xs bg-emerald-800 hover:bg-emerald-900 active:bg-emerald-950 px-3 py-2 rounded-xl border border-emerald-500/50 flex items-center gap-1.5 font-semibold transition-colors">
+        <i class="fa-solid fa-database"></i>
+        <span>保存/復元</span>
+      </button>
+    </div>
+
+    <!-- 画面切替タブ -->
+    <nav class="flex bg-emerald-800 text-xs sm:text-sm font-bold border-t border-emerald-600/70">
+      <button type="button" onclick="switchTab('main')" id="tab-main" class="flex-1 py-3 text-center border-b-4 border-white text-white flex items-center justify-center gap-1.5 transition-colors">
+        <i class="fa-solid fa-table-cells"></i>
+        <span>メイン出席表</span>
+      </button>
+      <button type="button" onclick="switchTab('member')" id="tab-member" class="flex-1 py-3 text-center border-b-4 border-transparent text-emerald-200 hover:text-white flex items-center justify-center gap-1.5 transition-colors">
+        <i class="fa-solid fa-users"></i>
+        <span>メンバー管理</span>
+      </button>
+      <button type="button" onclick="switchTab('schedule')" id="tab-schedule" class="flex-1 py-3 text-center border-b-4 border-transparent text-emerald-200 hover:text-white flex items-center justify-center gap-1.5 transition-colors">
+        <i class="fa-solid fa-calendar-plus"></i>
+        <span>日程管理</span>
+      </button>
+    </nav>
+  </header>
+
+  <main class="max-w-7xl mx-auto p-2.5 sm:p-4">
+
+    <!-- ======================================================== -->
+    <!-- 【画面1】メイン画面（出席状況マトリックス表） -->
+    <!-- ======================================================== -->
+    <section id="view-main" class="space-y-3">
+      <!-- 種別切替バー（練習日程 vs 本番日程） -->
+      <div class="flex flex-wrap justify-between items-center gap-2 bg-white p-2.5 rounded-xl shadow-sm border border-slate-200">
+        <div class="flex bg-slate-100 p-1 rounded-xl w-full sm:w-auto">
+          <button type="button" onclick="setEventTypeFilter('practice')" id="filter-practice" class="flex-1 sm:flex-initial px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all bg-emerald-600 text-white shadow-sm flex items-center justify-center gap-1.5">
+            <i class="fa-solid fa-drum"></i> 練習日程
+          </button>
+          <button type="button" onclick="setEventTypeFilter('performance')" id="filter-performance" class="flex-1 sm:flex-initial px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all text-slate-600 hover:text-slate-900 flex items-center justify-center gap-1.5">
+            <i class="fa-solid fa-trophy"></i> 本番日程
+          </button>
+        </div>
+        <div class="text-[11px] text-slate-500 font-medium px-1 flex flex-wrap items-center gap-3">
+          <span><i class="fa-solid fa-hand-pointer text-emerald-600"></i> 名前タップで出欠入力</span>
+          <span><i class="fa-solid fa-chart-simple text-emerald-600"></i> 日程タップでパート集計</span>
+        </div>
+      </div>
+
+      <!-- 出席マトリックス表 -->
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="overflow-x-auto max-h-[72vh]">
+          <table class="w-full text-xs text-left text-slate-600 border-collapse" id="matrix-table">
+            <thead class="text-xs text-slate-700 bg-slate-50 border-b sticky-header">
+              <!-- パートグループ行 -->
+              <tr id="table-header-parts">
+                <th class="py-2.5 px-3 sticky-corner min-w-[155px] bg-slate-100 font-bold border-r border-slate-200 text-slate-700">
+                  日程 / イベント
+                </th>
+              </tr>
+              <!-- メンバー名行 -->
+              <tr id="table-header-members" class="border-b border-slate-200">
+                <th class="py-1.5 px-3 sticky-corner bg-slate-100 border-r border-slate-200 text-slate-400 text-[10px] font-normal">
+                  ↓タップで集計・詳細
+                </th>
+              </tr>
+            </thead>
+            <tbody id="matrix-body" class="divide-y divide-slate-100">
+              <!-- JSで日程行を動的生成 -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================== -->
+    <!-- 【画面2】出席予定入力画面 -->
+    <!-- ======================================================== -->
+    <section id="view-input" class="hidden space-y-4">
+      <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center gap-3">
+        <div>
+          <div class="flex items-center gap-1.5">
+            <span class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800" id="input-member-part">パート</span>
+            <span id="input-member-extra-badge" class="hidden text-[11px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 border border-blue-200">Ex (エキストラ)</span>
+          </div>
+          <h2 class="text-xl font-bold text-slate-800 mt-1" id="input-member-name">団員名</h2>
+        </div>
+        <button type="button" onclick="switchTab('main')" class="text-xs bg-slate-100 hover:bg-slate-200 active:bg-slate-300 px-3.5 py-2.5 rounded-xl font-bold text-slate-700 border border-slate-200 flex items-center gap-1.5">
+          <i class="fa-solid fa-arrow-left"></i> メインに戻る
+        </button>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
+          <h3 class="font-bold text-sm text-slate-800 flex items-center gap-1.5">
+            <i class="fa-solid fa-pen-to-square text-emerald-600"></i> 全日程の出欠・交通手段を入力
+          </h3>
+          <span class="text-[11px] text-slate-500 font-medium">○出席 / △未確定 / ×欠席</span>
+        </div>
+
+        <div id="attendance-input-list" class="space-y-3.5">
+          <!-- JSで全日程の入力カードを動的生成 -->
+        </div>
+
+        <div class="pt-2">
+          <button type="button" onclick="saveAttendance()" class="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold rounded-xl shadow-md flex items-center justify-center gap-2 text-base transition-colors">
+            <i class="fa-solid fa-check"></i> 出欠回答を保存する
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================== -->
+    <!-- 【画面3】メンバー管理画面 -->
+    <!-- ======================================================== -->
+    <section id="view-member" class="hidden space-y-4">
+      <!-- 新規メンバー登録カード -->
+      <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+        <h2 class="font-bold text-base text-slate-800 mb-3 flex items-center gap-1.5">
+          <i class="fa-solid fa-user-plus text-emerald-600"></i> 新しいメンバーの登録
+        </h2>
+        <form onsubmit="addMember(event)" class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">パート</label>
+            <select id="new-member-part" required class="w-full border border-slate-300 rounded-xl p-2.5 text-sm bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
+              <!-- JSで14パート生成 -->
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">お名前</label>
+            <input type="text" id="new-member-name" placeholder="例: 藤井 太郎" required class="w-full border border-slate-300 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">区分・状態</label>
+            <select id="new-member-status" required class="w-full border border-slate-300 rounded-xl p-2.5 text-sm bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
+              <option value="active">実働団員</option>
+              <option value="extra">エキストラ</option>
+              <option value="inactive">休団中</option>
+            </select>
+          </div>
+          <div class="flex items-end">
+            <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold py-2.5 px-4 rounded-xl text-sm shadow-sm flex items-center justify-center gap-1.5 transition-colors">
+              <i class="fa-solid fa-plus"></i> メンバー追加
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- パート別メンバー名簿一覧 -->
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+        <div class="flex flex-wrap justify-between items-center gap-2 mb-3">
+          <h2 class="font-bold text-base text-slate-800 flex items-center gap-1.5">
+            <i class="fa-solid fa-users-gear text-emerald-600"></i> 団員名簿・区分管理
+          </h2>
+          <span class="text-[11px] text-slate-500">※「休団中」はメイン出席表とパート集計に表示されません</span>
+        </div>
+        <div id="member-list-container" class="space-y-4">
+          <!-- JSでパート別にメンバーを表示 -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================== -->
+    <!-- 【画面4】日程管理画面（複数練習一括登録 ＆ ドラムロール時間選択） -->
+    <!-- ======================================================== -->
+    <section id="view-schedule" class="hidden space-y-4">
+
+      <!-- 種別切替バー（練習日程を一括登録 vs 本番日程を登録） -->
+      <div class="bg-white p-2.5 rounded-xl shadow-sm border border-slate-200">
+        <div class="grid grid-cols-2 gap-1.5 bg-slate-100 p-1 rounded-xl">
+          <button type="button" onclick="switchScheduleMode('practice')" id="sched-mode-practice" class="py-2.5 px-3 rounded-lg text-xs sm:text-sm font-bold transition-all bg-emerald-600 text-white shadow-sm flex items-center justify-center gap-1.5">
+            <i class="fa-solid fa-drum"></i>
+            <span>練習日程を一括登録</span>
+          </button>
+          <button type="button" onclick="switchScheduleMode('performance')" id="sched-mode-performance" class="py-2.5 px-3 rounded-lg text-xs sm:text-sm font-bold transition-all text-slate-600 hover:text-slate-900 flex items-center justify-center gap-1.5">
+            <i class="fa-solid fa-trophy"></i>
+            <span>本番日程を登録</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- ====================================================== -->
+      <!-- モードA: 練習日程の一括登録フォーム -->
+      <!-- ====================================================== -->
+      <div id="schedule-panel-practice" class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+          <div>
+            <h2 class="font-bold text-base text-slate-800 flex items-center gap-1.5">
+              <i class="fa-solid fa-layer-group text-emerald-600"></i> 練習日程の一括登録
+            </h2>
+            <p class="text-[11px] text-slate-500 mt-0.5">
+              時間はタップでスクロール選択できます。「＋」で追加すると前のカードの対象イベントを自動引き継ぎします。
+            </p>
+          </div>
+          <button type="button" onclick="resetPracticeBatchCards()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold px-3 py-1.5 rounded-lg border border-slate-200 transition-colors">
+            入力リセット
+          </button>
+        </div>
+
+        <!-- 練習日程カードリストコンテナ -->
+        <div id="practice-batch-cards" class="space-y-3.5">
+          <!-- JSで練習日程カードを動的生成 -->
+        </div>
+
+        <!-- ＋ もう1日分を追加ボタン -->
+        <button type="button" onclick="addPracticeBatchCard()" class="w-full py-3.5 px-4 rounded-xl border-2 border-dashed border-emerald-400 bg-emerald-50/70 hover:bg-emerald-100/80 active:bg-emerald-200/70 text-emerald-800 font-bold text-sm flex items-center justify-center gap-2 transition-colors">
+          <i class="fa-solid fa-plus-circle text-lg text-emerald-600"></i>
+          <span>＋ もう1日分（練習日程）を追加</span>
+        </button>
+
+        <!-- まとめて登録ボタン -->
+        <div class="pt-1">
+          <button type="button" onclick="submitPracticeBatch()" class="w-full py-3.5 px-4 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold rounded-xl shadow-md text-sm sm:text-base flex items-center justify-center gap-2 transition-colors">
+            <i class="fa-solid fa-cloud-arrow-up"></i>
+            <span>入力した練習日程をまとめて登録する（<span id="practice-batch-count">1</span>件）</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- ====================================================== -->
+      <!-- モードB: 本番日程の登録フォーム -->
+      <!-- ====================================================== -->
+      <div id="schedule-panel-performance" class="hidden bg-white p-4 rounded-xl shadow-sm border border-slate-200 space-y-4">
+        <div class="border-b border-slate-100 pb-2.5">
+          <h2 class="font-bold text-base text-slate-800 flex items-center gap-1.5">
+            <i class="fa-solid fa-trophy text-amber-500"></i> 本番日程の登録
+          </h2>
+          <p class="text-[11px] text-slate-500 mt-0.5">
+            イベント名・会場・集合/開演時間（スクロール選択）・演奏曲とカット方法を入力してください。
+          </p>
+        </div>
+
+        <form onsubmit="submitPerformanceEvent(event)" class="space-y-3.5">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-bold text-slate-600 mb-1">日付 <span class="text-rose-500">*</span></label>
+              <input type="date" id="perf-date" required class="w-full border border-slate-300 rounded-xl p-3 text-sm bg-white focus:ring-2 focus:ring-emerald-500 outline-none">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-600 mb-1">本番イベント名 <span class="text-rose-500">*</span></label>
+              <input type="text" id="perf-name" required placeholder="例: 第58回 定期演奏会" class="w-full border border-slate-300 rounded-xl p-3 text-sm bg-white focus:ring-2 focus:ring-emerald-500 outline-none">
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">場所（会場）</label>
+            <input type="text" id="perf-location" placeholder="例: 藤井寺市立市民総合会館 大ホール" class="w-full border border-slate-300 rounded-xl p-3 text-sm bg-white focus:ring-2 focus:ring-emerald-500 outline-none">
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-bold text-slate-600 mb-1">
+                <i class="fa-regular fa-clock text-emerald-600 mr-1"></i>集合時間（選択）
+              </label>
+              <select id="perf-meeting-time" class="w-full border border-slate-300 rounded-xl p-3 text-sm bg-white font-semibold focus:ring-2 focus:ring-emerald-500 outline-none">
+                <!-- JSでドラムロール時間生成 -->
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-600 mb-1">
+                <i class="fa-regular fa-clock text-amber-600 mr-1"></i>開演時間（選択）
+              </label>
+              <select id="perf-start-time" class="w-full border border-slate-300 rounded-xl p-3 text-sm bg-white font-semibold focus:ring-2 focus:ring-emerald-500 outline-none">
+                <!-- JSでドラムロール時間生成 -->
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">演奏曲目 ＆ カット方法</label>
+            <textarea id="perf-songs" rows="4" placeholder="曲名や詳しいカット指示を入力&#10;例: 1. アルヴァマー序曲 (M1 15〜30小節カット)&#10;2. 宝島 (リピート全カット)" class="w-full border border-slate-300 rounded-xl p-3 text-sm font-mono bg-white focus:ring-2 focus:ring-emerald-500 outline-none"></textarea>
+          </div>
+
+          <div class="flex gap-2.5 pt-1">
+            <button type="submit" class="flex-1 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold py-3.5 px-4 rounded-xl text-sm shadow-md flex items-center justify-center gap-2 transition-colors">
+              <i class="fa-solid fa-floppy-disk"></i> 本番日程を登録する
+            </button>
+            <button type="button" onclick="resetPerformanceForm()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-3.5 px-4 rounded-xl text-sm transition-colors">
+              クリア
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- ====================================================== -->
+      <!-- 登録済み日程一覧（編集・削除） -->
+      <!-- ====================================================== -->
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="font-bold text-base text-slate-800 flex items-center gap-1.5">
+            <i class="fa-solid fa-list-check text-emerald-600"></i> 登録済み日程一覧
+          </h2>
+          <span class="text-xs text-slate-400 font-medium" id="registered-events-count">0件</span>
+        </div>
+        <div id="schedule-list" class="space-y-2.5">
+          <!-- JSで動的生成 -->
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ======================================================== -->
+  <!-- トースト通知コンテナ -->
+  <!-- ======================================================== -->
+  <div id="toast-container" class="fixed bottom-4 right-4 left-4 sm:left-auto z-50 flex flex-col items-center sm:items-end space-y-2 pointer-events-none"></div>
+
+  <!-- ======================================================== -->
+  <!-- モーダル1: 演奏曲・カット詳細（本番名タップ時） -->
+  <!-- ======================================================== -->
+  <div id="modal-songs" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-[1px] z-50 flex items-center justify-center p-4" onclick="closeModalOnBackdrop(event, 'modal-songs')">
+    <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-5 space-y-4">
+      <div class="flex justify-between items-start border-b border-slate-100 pb-3">
+        <div>
+          <span class="text-xs bg-amber-100 text-amber-800 font-bold px-2.5 py-0.5 rounded-full">本番・演奏曲情報</span>
+          <h3 class="text-lg font-bold text-slate-800 mt-1.5" id="modal-songs-title">イベント名</h3>
+        </div>
+        <button type="button" onclick="closeModal('modal-songs')" class="text-slate-400 hover:text-slate-600 w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 text-xl font-bold">&times;</button>
+      </div>
+      <div class="space-y-2 text-sm">
+        <p class="text-xs text-slate-600 flex items-center gap-1.5">
+          <i class="fa-solid fa-location-dot text-amber-600 w-4 text-center"></i>
+          <span>会場: <strong id="modal-songs-location" class="text-slate-800"></strong></span>
+        </p>
+        <p class="text-xs text-slate-600 flex items-center gap-1.5">
+          <i class="fa-regular fa-clock text-amber-600 w-4 text-center"></i>
+          <span>時間: <strong id="modal-songs-time" class="text-slate-800"></strong></span>
+        </p>
+        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 mt-2">
+          <h4 class="font-bold text-xs text-slate-600 mb-1.5 flex items-center gap-1">
+            <i class="fa-solid fa-scissors text-amber-600"></i> 演奏曲目・カット方法:
+          </h4>
+          <pre id="modal-songs-content" class="text-xs text-slate-800 font-sans whitespace-pre-wrap leading-relaxed"></pre>
+        </div>
+      </div>
+      <button type="button" onclick="closeModal('modal-songs')" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-2.5 rounded-xl text-sm transition-colors">閉じる</button>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- モーダル2: 日程タップ時・パート別参加集計モーダル -->
+  <!-- ======================================================== -->
+  <div id="modal-summary" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-[1px] z-50 flex items-center justify-center p-4" onclick="closeModalOnBackdrop(event, 'modal-summary')">
+    <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-5 space-y-4 max-h-[85vh] flex flex-col">
+      <div class="flex justify-between items-start border-b border-slate-100 pb-3 shrink-0">
+        <div>
+          <span class="text-xs bg-emerald-100 text-emerald-800 font-bold px-2.5 py-0.5 rounded-full" id="modal-summary-date">日付</span>
+          <h3 class="text-lg font-bold text-slate-800 mt-1.5" id="modal-summary-title">日程名</h3>
+        </div>
+        <button type="button" onclick="closeModal('modal-summary')" class="text-slate-400 hover:text-slate-600 w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 text-xl font-bold">&times;</button>
+      </div>
+
+      <div class="overflow-y-auto space-y-3 pr-1 flex-1">
+        <div id="modal-summary-details" class="bg-slate-50 p-3 rounded-xl text-xs text-slate-600 space-y-1 border border-slate-200"></div>
+
+        <!-- 全体サマリー（○・△・×） -->
+        <div class="grid grid-cols-3 gap-2 text-center">
+          <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-2">
+            <span class="block text-[10px] font-bold text-emerald-700">出席 (○)</span>
+            <span id="modal-summary-yes" class="text-base font-bold text-emerald-700">0名</span>
+          </div>
+          <div class="bg-amber-50 border border-amber-200 rounded-xl p-2">
+            <span class="block text-[10px] font-bold text-amber-700">未確定 (△)</span>
+            <span id="modal-summary-maybe" class="text-base font-bold text-amber-600">0名</span>
+          </div>
+          <div class="bg-rose-50 border border-rose-200 rounded-xl p-2">
+            <span class="block text-[10px] font-bold text-rose-700">欠席 (×)</span>
+            <span id="modal-summary-no" class="text-base font-bold text-rose-600">0名</span>
+          </div>
+        </div>
+
+        <div class="flex justify-between items-center pt-2 border-t border-slate-100">
+          <h4 class="font-bold text-xs text-slate-700 flex items-center gap-1.5">
+            <i class="fa-solid fa-chart-pie text-emerald-600"></i> パート別参加集計（出席○）
+          </h4>
+          <span id="modal-summary-total" class="text-xs font-bold bg-emerald-600 text-white px-2.5 py-0.5 rounded-full">合計 0 名</span>
+        </div>
+
+        <div id="modal-summary-parts" class="space-y-2.5 text-xs">
+          <!-- JSでパート別集計バーを挿入 -->
+        </div>
+
+        <!-- 本番時のみ表示：交通手段集計 -->
+        <div id="modal-summary-transport-wrapper" class="hidden pt-2.5 border-t border-slate-100 space-y-2">
+          <h4 class="font-bold text-xs text-slate-700 flex items-center gap-1.5">
+            <i class="fa-solid fa-car text-emerald-600"></i> 交通手段の集計（本番）
+          </h4>
+          <div id="modal-summary-transport" class="grid grid-cols-2 gap-1.5 text-[11px]">
+            <!-- JSで交通手段別人数を挿入 -->
+          </div>
+        </div>
+      </div>
+
+      <button type="button" onclick="closeModal('modal-summary')" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-2.5 rounded-xl text-sm shrink-0 transition-colors">閉じる</button>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- モーダル3: 登録済み日程の個別編集モーダル（ドラムロール時間選択対応） -->
+  <!-- ======================================================== -->
+  <div id="modal-edit-event" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-[1px] z-50 flex items-center justify-center p-4" onclick="closeModalOnBackdrop(event, 'modal-edit-event')">
+    <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-5 space-y-4 max-h-[90vh] flex flex-col">
+      <div class="flex justify-between items-center border-b border-slate-100 pb-3 shrink-0">
+        <h3 class="text-base font-bold text-slate-800 flex items-center gap-1.5">
+          <i class="fa-solid fa-pen-to-square text-emerald-600"></i> 日程の編集
+        </h3>
+        <button type="button" onclick="closeModal('modal-edit-event')" class="text-slate-400 hover:text-slate-600 w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 text-xl font-bold">&times;</button>
+      </div>
+
+      <form onsubmit="saveEditedEvent(event)" class="overflow-y-auto space-y-3.5 pr-1 flex-1">
+        <input type="hidden" id="edit-modal-id">
+        <input type="hidden" id="edit-modal-type">
+
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">日付</label>
+          <input type="date" id="edit-modal-date" required class="w-full border border-slate-300 rounded-xl p-2.5 text-sm bg-white">
+        </div>
+
+        <!-- 編集用：練習フィールド -->
+        <div id="edit-modal-practice-fields" class="space-y-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">練習場所</label>
+            <select id="edit-modal-location" class="w-full border border-slate-300 rounded-xl p-2.5 text-sm bg-white">
+              <option value="多目的">多目的</option>
+              <option value="小ホール">小ホール</option>
+              <option value="大ホール">大ホール</option>
+              <option value="その他">その他</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">練習時間（スクロール選択）</label>
+            <div class="flex items-center gap-2">
+              <select id="edit-modal-prac-start" class="flex-1 border border-slate-300 rounded-xl p-2.5 text-sm bg-white font-semibold"></select>
+              <span class="text-slate-500 font-bold">〜</span>
+              <select id="edit-modal-prac-end" class="flex-1 border border-slate-300 rounded-xl p-2.5 text-sm bg-white font-semibold"></select>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">合奏時間（スクロール選択）</label>
+            <div class="flex items-center gap-2">
+              <select id="edit-modal-gassou-start" class="flex-1 border border-slate-300 rounded-xl p-2.5 text-sm bg-white font-semibold"></select>
+              <span class="text-slate-500 font-bold">〜</span>
+              <select id="edit-modal-gassou-end" class="flex-1 border border-slate-300 rounded-xl p-2.5 text-sm bg-white font-semibold"></select>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">対象イベント（どの本番の曲か）</label>
+            <input type="text" id="edit-modal-target" placeholder="例: 定演曲、慰問曲" class="w-full border border-slate-300 rounded-xl p-2.5 text-sm bg-white">
+          </div>
+        </div>
+
+        <!-- 編集用：本番フィールド -->
+        <div id="edit-modal-performance-fields" class="hidden space-y-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">本番イベント名</label>
+            <input type="text" id="edit-modal-perf-name" class="w-full border border-slate-300 rounded-xl p-2.5 text-sm bg-white">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">場所（会場）</label>
+            <input type="text" id="edit-modal-perf-location" class="w-full border border-slate-300 rounded-xl p-2.5 text-sm bg-white">
+          </div>
+          <div class="grid grid-cols-2 gap-2.5">
+            <div>
+              <label class="block text-xs font-bold text-slate-600 mb-1">集合時間</label>
+              <select id="edit-modal-meeting-time" class="w-full border border-slate-300 rounded-xl p-2.5 text-sm bg-white font-semibold"></select>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-600 mb-1">開演時間</label>
+              <select id="edit-modal-start-time" class="w-full border border-slate-300 rounded-xl p-2.5 text-sm bg-white font-semibold"></select>
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">演奏曲目 ＆ カット方法</label>
+            <textarea id="edit-modal-songs" rows="4" class="w-full border border-slate-300 rounded-xl p-2.5 text-xs font-mono bg-white"></textarea>
+          </div>
+        </div>
+
+        <div class="flex gap-2.5 pt-2">
+          <button type="submit" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl text-sm shadow-sm">変更を保存する</button>
+          <button type="button" onclick="closeModal('modal-edit-event')" class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-3 px-4 rounded-xl text-sm">キャンセル</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- モーダル4: 汎用削除確認ダイアログ（alert/confirm 不使用） -->
+  <!-- ======================================================== -->
+  <div id="modal-confirm" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-[1px] z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-5 space-y-4">
+      <div class="flex items-center gap-2 text-rose-600 border-b border-slate-100 pb-2.5">
+        <i class="fa-solid fa-triangle-exclamation text-lg"></i>
+        <h3 class="text-base font-bold text-slate-800" id="confirm-modal-title">削除の確認</h3>
+      </div>
+      <p class="text-xs sm:text-sm text-slate-600 whitespace-pre-wrap leading-relaxed" id="confirm-modal-message">本当に削除しますか？</p>
+      <div class="flex gap-2.5 pt-2">
+        <button type="button" onclick="handleConfirmYes()" class="flex-1 bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white font-bold py-2.5 rounded-xl text-xs sm:text-sm shadow-sm transition-colors">削除する</button>
+        <button type="button" onclick="closeModal('modal-confirm')" class="flex-1 bg-slate-200 hover:bg-slate-300 active:bg-slate-400 text-slate-700 font-bold py-2.5 rounded-xl text-xs sm:text-sm transition-colors">キャンセル</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- モーダル5: データバックアップ・復元モーダル -->
+  <!-- ======================================================== -->
+  <div id="modal-backup" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-[1px] z-50 flex items-center justify-center p-4" onclick="closeModalOnBackdrop(event, 'modal-backup')">
+    <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-5 space-y-4">
+      <div class="flex justify-between items-center border-b border-slate-100 pb-2.5">
+        <h3 class="text-base font-bold text-slate-800 flex items-center gap-1.5">
+          <i class="fa-solid fa-database text-emerald-600"></i> データのバックアップ・復元
+        </h3>
+        <button type="button" onclick="closeModal('modal-backup')" class="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
+      </div>
+      <p class="text-xs text-slate-600 leading-relaxed">
+        藤井寺市民音楽団の全メンバー・日程・出欠データをJSONファイルとして端末に保存したり、保存済みファイルから復元できます。
+      </p>
+      <div class="space-y-2.5">
+        <button type="button" onclick="exportData()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-4 rounded-xl text-xs sm:text-sm shadow-sm flex items-center justify-center gap-2">
+          <i class="fa-solid fa-download"></i> バックアップJSONをダウンロード
+        </button>
+        <label for="import-json-input" class="w-full cursor-pointer bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold py-2.5 px-4 rounded-xl text-xs sm:text-sm border border-slate-300 flex items-center justify-center gap-2">
+          <i class="fa-solid fa-upload"></i> JSONファイルから復元する
+          <input type="file" id="import-json-input" accept=".json,application/json" onchange="importData(event)" class="hidden">
+        </label>
+      </div>
+      <button type="button" onclick="closeModal('modal-backup')" class="w-full bg-slate-800 text-white font-bold py-2 rounded-xl text-xs">閉じる</button>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- JavaScript ロジック (Firebase v10 ES Module) -->
+  <!-- ======================================================== -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+    // ========================================================
+    // 1. Firebase Realtime Database 設定
+    // ========================================================
+    const firebaseConfig = {
+      apiKey: "AIzaSyD7azoJNDpvttFD7ZYJPciuN9VItGI4pSM",
+      authDomain: "fujiidera-wind.firebaseapp.com",
+      databaseURL: "https://fujiidera-wind-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "fujiidera-wind",
+      storageBucket: "fujiidera-wind.firebasestorage.app",
+      messagingSenderId: "918816841121",
+      appId: "1:918816841121:web:222ff1f81b0efbb25d3fe0"
+    };
+
+    // ========================================================
+    // 2. パート定義（14パート・固定順）および定数
+    // ========================================================
+    const PARTS = [
+      '指揮者',
+      'Flute/Piccolo',
+      'Oboe/EnglishHorn',
+      'Fagot',
+      'Clarinet',
+      'Bass Clarinet',
+      'Saxophone',
+      'Trumpet',
+      'Horn',
+      'Trombone',
+      'Euphonium',
+      'Tuba',
+      'Contrabass',
+      'Percussion'
+    ];
+
+    const TRANSPORT_OPTIONS = [
+      '会館集合(同乗可)',
+      '会館集合(楽器車)',
+      '会館集合(相乗り希望)',
+      '現地集合(車)',
+      '現地集合(相乗り)',
+      '現地集合(電車等)'
+    ];
+
+    const PRACTICE_LOCATIONS = ['多目的', '小ホール', '大ホール', 'その他'];
+
+    // 08:00〜23:30 の15分刻み時間リスト（ドラムロール選択用）
+    const TIME_SLOTS = (() => {
+      const slots = [];
+      for (let h = 8; h <= 23; h++) {
+        const hh = String(h).padStart(2, '0');
+        slots.push(`${hh}:00`, `${hh}:15`, `${hh}:30`);
+        if (h < 23) slots.push(`${hh}:45`);
+      }
+      return slots;
+    })();
+
+    const STORAGE_KEY = 'fujiidera_wind_data_cache';
+    const FIREBASE_DB_PATH = 'fujiidera_wind_data';
+
+    // アプリケーション状態
+    let state = {
+      members: [],
+      events: [],
+      activeFilter: 'practice',
+      currentEditingMemberId: null
+    };
+
+    // 練習日程一括登録用カード配列
+    let practiceBatchCards = [];
+    let batchInitializedFromDb = false;
+
+    let db = null;
+    let dbRef = null;
+    let isFirebaseActive = false;
+    let currentTab = 'main';
+
+    // ========================================================
+    // 3. Firebase リアルタイム同期 & ローカルキャッシュ
+    // ========================================================
+    function initDatabase() {
+      loadStateFromLocalStorage();
+
+      try {
+        const app = initializeApp(firebaseConfig);
+        db = getDatabase(app);
+        dbRef = ref(db, FIREBASE_DB_PATH);
+        isFirebaseActive = true;
+
+        // 接続状態の監視
+        const connectedRef = ref(db, '.info/connected');
+        onValue(connectedRef, (snap) => {
+          updateSyncStatusBadge(snap.val() === true);
+        });
+
+        // データベース変更のリアルタイム購読
+        onValue(dbRef, (snapshot) => {
+          const data = snapshot.val();
+          if (data === null || data === undefined) {
+            initDefaultData();
+            saveState();
+          } else {
+            state.members = normalizeMembers(data.members);
+            state.events = normalizeEvents(data.events);
+            saveStateToLocalStorage();
+          }
+
+          // 初回データ取得時に練習一括カードの対象イベント初期値を反映
+          if (!batchInitializedFromDb) {
+            batchInitializedFromDb = true;
+            initPracticeBatchCards();
+          }
+          renderCurrentView();
+        }, (error) => {
+          console.error('Firebase read error:', error);
+          updateSyncStatusBadge(false);
+        });
+      } catch (err) {
+        console.error('Firebase init error:', err);
+        isFirebaseActive = false;
+        updateSyncStatusBadge(false);
+        if (state.members.length === 0 && state.events.length === 0) {
+          initDefaultData();
+        }
+        initPracticeBatchCards();
+        renderCurrentView();
+      }
+    }
+
+    function normalizeMembers(raw) {
+      if (!raw) return [];
+      const arr = Array.isArray(raw) ? raw : Object.values(raw);
+      return arr.filter(Boolean).map(m => ({
+        id: m.id || ('m_' + Math.random().toString(36).slice(2, 9)),
+        name: m.name || '名称未設定',
+        part: PARTS.includes(m.part) ? m.part : PARTS[0],
+        status: ['active', 'extra', 'inactive'].includes(m.status) ? m.status : 'active'
+      }));
+    }
+
+    function normalizeEvents(raw) {
+      if (!raw) return [];
+      const arr = Array.isArray(raw) ? raw : Object.values(raw);
+      return arr.filter(Boolean).map(evt => ({
+        ...evt,
+        type: evt.type === 'performance' ? 'performance' : 'practice',
+        date: evt.date || '',
+        attendance: (evt.attendance && typeof evt.attendance === 'object') ? evt.attendance : {}
+      }));
+    }
+
+    function updateSyncStatusBadge(connected) {
+      const badge = document.getElementById('sync-status-badge');
+      if (!badge) return;
+      if (connected) {
+        badge.innerHTML = `
+          <span class="bg-emerald-500/30 text-emerald-100 text-[10px] px-2.5 py-0.5 rounded-full border border-emerald-300/40 inline-flex items-center gap-1">
+            🟢 リアルタイム同期中
+          </span>`;
+      } else {
+        badge.innerHTML = `
+          <span class="bg-rose-500/30 text-rose-100 text-[10px] px-2.5 py-0.5 rounded-full border border-rose-300/40 inline-flex items-center gap-1">
+            🔴 オフライン(ローカル保存)
+          </span>`;
+      }
+    }
+
+    function saveState() {
+      saveStateToLocalStorage();
+      if (isFirebaseActive && dbRef) {
+        set(dbRef, {
+          members: state.members || [],
+          events: state.events || []
+        }).catch((err) => {
+          console.error('Firebase write error:', err);
+          showToast('クラウド同期に失敗しました（端末には保存済み）', 'error');
+        });
+      }
+    }
+
+    function saveStateToLocalStorage() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+          members: state.members || [],
+          events: state.events || []
+        }));
+      } catch (e) {
+        console.error('LocalStorage save error:', e);
+      }
+    }
+
+    function loadStateFromLocalStorage() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          state.members = normalizeMembers(parsed.members);
+          state.events = normalizeEvents(parsed.events);
+        } catch (e) {
+          state.members = [];
+          state.events = [];
+        }
+      }
+    }
+
+    function initDefaultData() {
+      state.members = [
+        { id: 'm0', name: '佐々木', part: '指揮者', status: 'active' },
+        { id: 'm1', name: '藤井', part: 'Flute/Piccolo', status: 'active' },
+        { id: 'm2', name: '道明寺', part: 'Clarinet', status: 'active' },
+        { id: 'm3', name: '葛井', part: 'Saxophone', status: 'extra' },
+        { id: 'm4', name: '志紀', part: 'Trumpet', status: 'active' },
+        { id: 'm5', name: '古市', part: 'Euphonium', status: 'active' },
+        { id: 'm6', name: '土師', part: 'Tuba', status: 'active' },
+        { id: 'm7', name: '応神', part: 'Horn', status: 'inactive' }
+      ];
+
+      const today = getLocalTodayStr();
+      state.events = [
+        {
+          id: 'e1',
+          type: 'practice',
+          date: today,
+          location: '多目的',
+          practiceTime: '18:00〜22:00',
+          gassouTime: '19:00〜21:30',
+          targetEvent: '定期演奏会',
+          attendance: {
+            'm0': { status: '○' },
+            'm1': { status: '○' },
+            'm2': { status: '○' },
+            'm3': { status: '△' },
+            'm5': { status: '○' },
+            'm6': { status: '○' }
+          }
+        },
+        {
+          id: 'e2',
+          type: 'performance',
+          date: '2027-04-18',
+          perfName: '第58回 定期演奏会',
+          perfLocation: '藤井寺市立市民総合会館 大ホール',
+          meetingTime: '09:00',
+          startTime: '14:00',
+          songs: '1. アルヴァマー序曲 (カットなし)\n2. 吹奏楽のための民話 (12〜24小節カット)\n3. 宝島 (リピート全カット)',
+          attendance: {
+            'm0': { status: '○', transport: '現地集合(車)' },
+            'm1': { status: '○', transport: '会館集合(同乗可)' }
+          }
+        }
+      ];
+      saveStateToLocalStorage();
+    }
+
+    // バックアップ出力・復元
+    function openBackupModal() {
+      document.getElementById('modal-backup').classList.remove('hidden');
+    }
+
+    function exportData() {
+      const exportObj = {
+        members: state.members || [],
+        events: state.events || [],
+        exportedAt: new Date().toISOString()
+      };
+      const jsonStr = JSON.stringify(exportObj, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `藤井寺市民音楽団_データバックアップ_${getLocalTodayStr()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      closeModal('modal-backup');
+      showToast('バックアップJSONをダウンロードしました', 'success');
+    }
+
+    function importData(event) {
+      const inputEl = event.target;
+      const file = inputEl.files && inputEl.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const imported = JSON.parse(e.target.result);
+          if (!imported || (!Array.isArray(imported.members) && !Array.isArray(imported.events))) {
+            throw new Error('Invalid JSON');
+          }
+          state.members = normalizeMembers(imported.members);
+          state.events = normalizeEvents(imported.events);
+          saveState();
+          renderCurrentView();
+          closeModal('modal-backup');
+          showToast('バックアップからデータを復元しました', 'success');
+        } catch (err) {
+          showToast('JSONファイルの形式が正しくありません', 'error');
+        } finally {
+          inputEl.value = '';
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    // ========================================================
+    // 4. 画面切替ナビゲーション
+    // ========================================================
+    function switchTab(tabName) {
+      currentTab = tabName;
+      document.querySelectorAll('main > section').forEach(el => el.classList.add('hidden'));
+      const targetSection = document.getElementById(`view-${tabName}`);
+      if (targetSection) targetSection.classList.remove('hidden');
+
+      ['main', 'member', 'schedule'].forEach(t => {
+        const btn = document.getElementById(`tab-${t}`);
+        if (!btn) return;
+        if (t === tabName) {
+          btn.classList.add('border-white', 'text-white');
+          btn.classList.remove('border-transparent', 'text-emerald-200');
+        } else {
+          btn.classList.remove('border-white', 'text-white');
+          btn.classList.add('border-transparent', 'text-emerald-200');
+        }
+      });
+
+      renderCurrentView();
+    }
+
+    function renderCurrentView() {
+      if (currentTab === 'main') renderMatrixTable();
+      if (currentTab === 'member') renderMemberList();
+      if (currentTab === 'schedule') {
+        if (practiceBatchCards.length === 0) {
+          initPracticeBatchCards();
+        } else {
+          renderPracticeBatchCards();
+        }
+        renderScheduleList();
+      }
+    }
+
+    function setEventTypeFilter(type) {
+      state.activeFilter = type;
+      const btnPractice = document.getElementById('filter-practice');
+      const btnPerformance = document.getElementById('filter-performance');
+      if (type === 'practice') {
+        btnPractice.className = 'flex-1 sm:flex-initial px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all bg-emerald-600 text-white shadow-sm flex items-center justify-center gap-1.5';
+        btnPerformance.className = 'flex-1 sm:flex-initial px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all text-slate-600 hover:text-slate-900 flex items-center justify-center gap-1.5';
+      } else {
+        btnPerformance.className = 'flex-1 sm:flex-initial px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all bg-emerald-600 text-white shadow-sm flex items-center justify-center gap-1.5';
+        btnPractice.className = 'flex-1 sm:flex-initial px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all text-slate-600 hover:text-slate-900 flex items-center justify-center gap-1.5';
+      }
+      renderMatrixTable();
+    }
+
+    // ========================================================
+    // 5. 【画面1】メイン出席表（マトリックス表）
+    // ========================================================
+    function renderMatrixTable() {
+      const visibleMembers = (state.members || []).filter(m => m.status === 'active' || m.status === 'extra');
+      const filteredEvents = (state.events || [])
+        .filter(e => e.type === state.activeFilter)
+        .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+
+      const headerPartsRow = document.getElementById('table-header-parts');
+      const headerMembersRow = document.getElementById('table-header-members');
+      const tbody = document.getElementById('matrix-body');
+
+      headerPartsRow.innerHTML = `
+        <th class="py-2.5 px-3 sticky-corner min-w-[155px] bg-slate-100 font-bold border-r border-slate-200 text-slate-700">
+          日程 / イベント
+        </th>`;
+      headerMembersRow.innerHTML = `
+        <th class="py-1.5 px-3 sticky-corner bg-slate-100 border-r border-slate-200 text-slate-400 text-[10px] font-normal">
+          ↓タップで集計・詳細
+        </th>`;
+
+      PARTS.forEach(part => {
+        const partMembers = visibleMembers.filter(m => m.part === part);
+        if (partMembers.length > 0) {
+          headerPartsRow.innerHTML += `
+            <th colspan="${partMembers.length}" class="py-1.5 px-2 text-center bg-slate-200/90 text-slate-700 font-bold border-r border-slate-300 text-[11px] whitespace-nowrap">
+              ${escapeHtml(part)}
+            </th>`;
+          partMembers.forEach(m => {
+            const extraBadge = m.status === 'extra'
+              ? '<span class="bg-blue-100 text-blue-700 text-[9px] px-1 py-0.2 rounded font-bold ml-1 border border-blue-200">Ex</span>'
+              : '';
+            headerMembersRow.innerHTML += `
+              <th onclick="openInputForMember('${m.id}')" class="py-2.5 px-2.5 text-center font-bold text-emerald-800 bg-white border-r border-slate-200 cursor-pointer hover:bg-emerald-50 active:bg-emerald-100 whitespace-nowrap min-w-[74px] transition-colors">
+                ${escapeHtml(m.name)}${extraBadge}
+                <i class="fa-solid fa-pen text-[9px] text-emerald-500 ml-0.5"></i>
+              </th>`;
+          });
+        }
+      });
+
+      tbody.innerHTML = '';
+      if (filteredEvents.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="${visibleMembers.length + 1}" class="text-center py-8 text-slate-400 text-xs">
+              登録されている${state.activeFilter === 'practice' ? '練習' : '本番'}日程がありません
+            </td>
+          </tr>`;
+        return;
+      }
+
+      filteredEvents.forEach(evt => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-50/80 border-b border-slate-100 transition-colors';
+
+        let eventLabel = '';
+        if (evt.type === 'practice') {
+          eventLabel = `
+            <div class="font-bold text-slate-800 text-xs">${formatDate(evt.date)}</div>
+            <div class="text-[10px] text-emerald-700 font-medium mt-0.5 truncate max-w-[120px]">
+              練習 (${escapeHtml(evt.location || '未定')})
+            </div>
+            ${evt.targetEvent ? `<div class="text-[9px] text-slate-400 truncate max-w-[120px]">${escapeHtml(evt.targetEvent)}</div>` : ''}`;
+        } else {
+          eventLabel = `
+            <div class="font-bold text-amber-800 text-xs">${formatDate(evt.date)}</div>
+            <button type="button" onclick="showSongsModal('${evt.id}', event)" class="text-[10px] bg-amber-100 hover:bg-amber-200 active:bg-amber-300 text-amber-900 font-bold px-2 py-1 rounded-md border border-amber-300 mt-1 inline-flex items-center gap-1 max-w-[125px] truncate shadow-2xs">
+              <i class="fa-solid fa-music shrink-0"></i>
+              <span class="truncate">${escapeHtml(evt.perfName || '本番')}</span>
+            </button>`;
+        }
+
+        let rowHtml = `
+          <td class="py-2.5 px-3 sticky-col border-r border-slate-200 bg-white cursor-pointer hover:bg-slate-50" onclick="showSummaryModal('${evt.id}')">
+            <div class="flex justify-between items-center gap-1.5">
+              <div class="min-w-0">${eventLabel}</div>
+              <button type="button" onclick="confirmDeleteEvent('${evt.id}', event)" class="text-slate-300 hover:text-rose-500 active:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 text-xs shrink-0 transition-colors" title="日程を削除">
+                <i class="fa-solid fa-trash-can"></i>
+              </button>
+            </div>
+          </td>`;
+
+        const attendanceMap = evt.attendance || {};
+
+        PARTS.forEach(part => {
+          const partMembers = visibleMembers.filter(m => m.part === part);
+          partMembers.forEach(m => {
+            const att = attendanceMap[m.id] || { status: '-' };
+            let symbolClass = 'text-slate-300';
+            if (att.status === '○') symbolClass = 'text-emerald-600 font-bold text-sm';
+            if (att.status === '△') symbolClass = 'text-amber-500 font-bold text-sm';
+            if (att.status === '×') symbolClass = 'text-rose-500 font-bold text-sm';
+
+            const shortTransport = att.transport
+              ? att.transport.replace('会館集合', '会館').replace('現地集合', '現地')
+              : '';
+
+            rowHtml += `
+              <td class="py-2 px-2 text-center border-r border-slate-100 ${symbolClass}">
+                <div>${escapeHtml(att.status || '-')}</div>
+                ${evt.type === 'performance' && shortTransport
+                  ? `<span class="block text-[9px] font-normal text-slate-500 truncate max-w-[68px] mx-auto mt-0.5">${escapeHtml(shortTransport)}</span>`
+                  : ''}
+              </td>`;
+          });
+        });
+
+        tr.innerHTML = rowHtml;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function confirmDeleteEvent(eventId, event) {
+      if (event) event.stopPropagation();
+      const evt = (state.events || []).find(e => e.id === eventId);
+      if (!evt) return;
+
+      const todayStr = getLocalTodayStr();
+      const isFutureOrToday = (evt.date || '') >= todayStr;
+
+      let title = '日程の削除確認';
+      let msg = `「${formatDate(evt.date)} ${evt.perfName || evt.targetEvent || '練習'}」を削除しますか？`;
+
+      if (isFutureOrToday) {
+        title = '【確認】未来の日程の削除';
+        msg = `まだ行われていない日程ですが本当に削除しますか？\n\n対象日程: ${formatDate(evt.date)} ${evt.perfName || evt.targetEvent || '練習'}`;
+      }
+
+      showConfirm(title, msg, () => {
+        state.events = (state.events || []).filter(e => e.id !== eventId);
+        saveState();
+        renderCurrentView();
+        showToast('日程を削除しました', 'info');
+      });
+    }
+
+    // ========================================================
+    // 6. 【画面2】出席予定入力画面
+    // ========================================================
+    function openInputForMember(memberId) {
+      const member = (state.members || []).find(m => m.id === memberId);
+      if (!member) return;
+      state.currentEditingMemberId = memberId;
+
+      document.getElementById('input-member-name').textContent = member.name;
+      document.getElementById('input-member-part').textContent = member.part;
+
+      const extraBadge = document.getElementById('input-member-extra-badge');
+      if (member.status === 'extra') {
+        extraBadge.classList.remove('hidden');
+      } else {
+        extraBadge.classList.add('hidden');
+      }
+
+      const container = document.getElementById('attendance-input-list');
+      container.innerHTML = '';
+
+      const sortedEvents = [...(state.events || [])].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+
+      if (sortedEvents.length === 0) {
+        container.innerHTML = `<p class="text-center text-slate-400 py-6 text-xs">登録された日程がありません</p>`;
+      }
+
+      sortedEvents.forEach(evt => {
+        const attendanceMap = evt.attendance || {};
+        const att = attendanceMap[memberId] || { status: '○', transport: '' };
+        const isPerf = evt.type === 'performance';
+
+        const card = document.createElement('div');
+        card.className = 'p-3.5 rounded-xl border border-slate-200 bg-slate-50/70 space-y-2.5';
+        card.innerHTML = `
+          <div class="flex flex-wrap justify-between items-center gap-1.5 border-b border-slate-200 pb-2">
+            <div class="flex items-center gap-1.5">
+              <span class="text-[11px] font-bold px-2 py-0.5 rounded-md ${isPerf ? 'bg-amber-100 text-amber-800 border border-amber-200' : 'bg-emerald-100 text-emerald-800 border border-emerald-200'}">
+                ${isPerf ? '本番' : '練習'}
+              </span>
+              <span class="font-bold text-sm text-slate-800">${formatDate(evt.date)}</span>
+            </div>
+            <span class="text-xs font-medium text-slate-600">
+              ${isPerf ? escapeHtml(evt.perfName || '') : `${escapeHtml(evt.location || '')} ${escapeHtml(evt.practiceTime || '')}`}
+            </span>
+          </div>
+
+          <div class="flex items-center gap-3 pt-0.5">
+            <span class="text-xs font-bold text-slate-600 shrink-0">出欠:</span>
+            <div class="grid grid-cols-3 gap-2 flex-1">
+              ${['○', '△', '×'].map(st => `
+                <label class="text-center py-2.5 rounded-xl border-2 border-slate-200 bg-white cursor-pointer font-bold text-base has-[:checked]:bg-emerald-600 has-[:checked]:text-white has-[:checked]:border-emerald-600 shadow-2xs transition-all select-none">
+                  <input type="radio" name="att-${evt.id}" value="${st}" ${att.status === st ? 'checked' : ''} class="hidden">
+                  ${st}
+                </label>
+              `).join('')}
+            </div>
+          </div>
+
+          ${isPerf ? `
+            <div class="pt-2 border-t border-slate-200/80">
+              <label class="block text-xs font-bold text-slate-600 mb-1">
+                <i class="fa-solid fa-car text-emerald-600 mr-1"></i>交通手段（本番）:
+              </label>
+              <select id="transport-${evt.id}" class="w-full text-xs sm:text-sm p-2.5 border border-slate-300 rounded-xl bg-white focus:ring-2 focus:ring-emerald-500 outline-none">
+                <option value="">-- 交通手段を選択 --</option>
+                ${TRANSPORT_OPTIONS.map(opt => `<option value="${opt}" ${att.transport === opt ? 'selected' : ''}>${opt}</option>`).join('')}
+              </select>
+            </div>
+          ` : ''}
+        `;
+        container.appendChild(card);
+      });
+
+      switchTab('input');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function saveAttendance() {
+      const memberId = state.currentEditingMemberId;
+      if (!memberId) return;
+
+      (state.events || []).forEach(evt => {
+        const radios = document.getElementsByName(`att-${evt.id}`);
+        let selectedStatus = '○';
+        radios.forEach(r => {
+          if (r.checked) selectedStatus = r.value;
+        });
+
+        if (!evt.attendance || typeof evt.attendance !== 'object') {
+          evt.attendance = {};
+        }
+        evt.attendance[memberId] = { status: selectedStatus };
+
+        if (evt.type === 'performance') {
+          const transSelect = document.getElementById(`transport-${evt.id}`);
+          if (transSelect) {
+            evt.attendance[memberId].transport = transSelect.value;
+          }
+        }
+      });
+
+      saveState();
+      showToast('出欠回答を保存しました', 'success');
+      switchTab('main');
+    }
+
+    // ========================================================
+    // 7. 【画面3】メンバー管理画面
+    // ========================================================
+    function renderMemberList() {
+      const partSelect = document.getElementById('new-member-part');
+      if (partSelect && partSelect.options.length === 0) {
+        partSelect.innerHTML = PARTS.map(p => `<option value="${p}">${p}</option>`).join('');
+      }
+
+      const container = document.getElementById('member-list-container');
+      container.innerHTML = '';
+
+      PARTS.forEach(part => {
+        const members = (state.members || []).filter(m => m.part === part);
+        if (members.length === 0) return;
+
+        const partBlock = document.createElement('div');
+        partBlock.className = 'border border-slate-200 rounded-xl p-3 bg-slate-50/60 space-y-2';
+        partBlock.innerHTML = `
+          <div class="flex justify-between items-center border-b border-slate-200 pb-1.5">
+            <h3 class="font-bold text-xs text-slate-700">${escapeHtml(part)}</h3>
+            <span class="text-[10px] text-slate-400 font-medium">${members.length} 名</span>
+          </div>`;
+
+        const listDiv = document.createElement('div');
+        listDiv.className = 'grid grid-cols-1 sm:grid-cols-2 gap-2';
+
+        members.forEach(m => {
+          let badgeHtml = '';
+          if (m.status === 'extra') {
+            badgeHtml = '<span class="bg-blue-100 text-blue-700 text-[10px] font-bold px-1.5 py-0.5 rounded border border-blue-200 ml-1.5">Ex</span>';
+          } else if (m.status === 'inactive') {
+            badgeHtml = '<span class="bg-slate-200 text-slate-600 text-[10px] font-bold px-1.5 py-0.5 rounded border border-slate-300 ml-1.5">休団中</span>';
+          }
+
+          listDiv.innerHTML += `
+            <div class="flex items-center justify-between bg-white p-2.5 rounded-xl border border-slate-200 text-xs gap-2">
+              <div class="flex items-center min-w-0">
+                <span class="font-bold text-slate-800 truncate ${m.status === 'inactive' ? 'line-through text-slate-400' : ''}">${escapeHtml(m.name)}</span>
+                ${badgeHtml}
+              </div>
+              <div class="flex items-center gap-1.5 shrink-0">
+                <select onchange="toggleMemberStatus('${m.id}', this.value)" class="text-[11px] p-1.5 border border-slate-300 rounded-lg bg-slate-50 font-medium focus:ring-1 focus:ring-emerald-500 outline-none">
+                  <option value="active" ${m.status === 'active' ? 'selected' : ''}>実働団員</option>
+                  <option value="extra" ${m.status === 'extra' ? 'selected' : ''}>エキストラ</option>
+                  <option value="inactive" ${m.status === 'inactive' ? 'selected' : ''}>休団中</option>
+                </select>
+                <button type="button" onclick="deleteMember('${m.id}')" class="text-slate-400 hover:text-rose-500 active:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 transition-colors" title="削除">
+                  <i class="fa-solid fa-trash-can"></i>
+                </button>
+              </div>
+            </div>`;
+        });
+        partBlock.appendChild(listDiv);
+        container.appendChild(partBlock);
+      });
+    }
+
+    function addMember(event) {
+      event.preventDefault();
+      const name = document.getElementById('new-member-name').value.trim();
+      const part = document.getElementById('new-member-part').value;
+      const status = document.getElementById('new-member-status').value;
+      if (!name) return;
+
+      if (!state.members) state.members = [];
+      state.members.push({
+        id: 'm_' + Date.now(),
+        name,
+        part,
+        status: status || 'active'
+      });
+      saveState();
+      document.getElementById('new-member-name').value = '';
+      renderMemberList();
+      showToast(`${name} さんを登録しました`, 'success');
+    }
+
+    function toggleMemberStatus(id, newStatus) {
+      const m = (state.members || []).find(x => x.id === id);
+      if (m) {
+        m.status = newStatus;
+        saveState();
+        renderMemberList();
+        showToast(`${m.name} さんの区分を変更しました`, 'info');
+      }
+    }
+
+    function deleteMember(id) {
+      const m = (state.members || []).find(x => x.id === id);
+      if (!m) return;
+
+      showConfirm('メンバーの削除', `「${m.name}」さんを名簿から削除しますか？`, () => {
+        state.members = (state.members || []).filter(x => x.id !== id);
+        saveState();
+        renderMemberList();
+        showToast('メンバーを削除しました', 'info');
+      });
+    }
+
+    // ========================================================
+    // 8. 【画面4】日程管理（複数練習一括登録 ＆ ドラムロール時間選択）
+    // ========================================================
+    function switchScheduleMode(mode) {
+      const btnPractice = document.getElementById('sched-mode-practice');
+      const btnPerf = document.getElementById('sched-mode-performance');
+      const panelPractice = document.getElementById('schedule-panel-practice');
+      const panelPerf = document.getElementById('schedule-panel-performance');
+
+      if (mode === 'practice') {
+        btnPractice.className = 'py-2.5 px-3 rounded-lg text-xs sm:text-sm font-bold transition-all bg-emerald-600 text-white shadow-sm flex items-center justify-center gap-1.5';
+        btnPerf.className = 'py-2.5 px-3 rounded-lg text-xs sm:text-sm font-bold transition-all text-slate-600 hover:text-slate-900 flex items-center justify-center gap-1.5';
+        panelPractice.classList.remove('hidden');
+        panelPerf.classList.add('hidden');
+      } else {
+        btnPerf.className = 'py-2.5 px-3 rounded-lg text-xs sm:text-sm font-bold transition-all bg-emerald-600 text-white shadow-sm flex items-center justify-center gap-1.5';
+        btnPractice.className = 'py-2.5 px-3 rounded-lg text-xs sm:text-sm font-bold transition-all text-slate-600 hover:text-slate-900 flex items-center justify-center gap-1.5';
+        panelPerf.classList.remove('hidden');
+        panelPractice.classList.add('hidden');
+      }
+    }
+
+    /**
+     * 登録済み直近の練習日程から対象イベント名を取得する
+     */
+    function getLatestPracticeTargetEvent() {
+      const practices = [...(state.events || [])]
+        .filter(e => e.type === 'practice' && e.targetEvent && e.targetEvent.trim() !== '')
+        .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+      return practices.length > 0 ? practices[0].targetEvent.trim() : '';
+    }
+
+    /**
+     * 過去に使われたユニークな対象イベント名リスト（クイック選択チップ用）
+     */
+    function getRecentTargetEventSuggestions() {
+      const seen = new Set();
+      const list = [];
+      [...(state.events || [])]
+        .filter(e => e.type === 'practice' && e.targetEvent && e.targetEvent.trim() !== '')
+        .sort((a, b) => (b.date || '').localeCompare(a.date || ''))
+        .forEach(e => {
+          const val = e.targetEvent.trim();
+          if (!seen.has(val) && list.length < 4) {
+            seen.add(val);
+            list.push(val);
+          }
+        });
+      return list;
+    }
+
+    /**
+     * ドラムロール（<select>）用の時間選択肢HTMLを生成
+     */
+    function buildTimeSelectOptions(selectedValue, includeEmpty = false) {
+      let html = '';
+      if (includeEmpty) {
+        html += `<option value="" ${selectedValue === '' ? 'selected' : ''}>未定/なし</option>`;
+      }
+      TIME_SLOTS.forEach(slot => {
+        html += `<option value="${slot}" ${selectedValue === slot ? 'selected' : ''}>${slot}</option>`;
+      });
+      return html;
+    }
+
+    /**
+     * 練習日程一括カードの初期化（最初の1枚を生成）
+     */
+    function initPracticeBatchCards(carryOverTarget = null) {
+      const initialTarget = carryOverTarget !== null ? carryOverTarget : getLatestPracticeTargetEvent();
+      practiceBatchCards = [
+        {
+          tempId: 'prac_card_' + Date.now(),
+          date: '',
+          location: '多目的',
+          practiceStart: '18:00',
+          practiceEnd: '22:00',
+          gassouStart: '19:00',
+          gassouEnd: '21:30',
+          targetEvent: initialTarget
+        }
+      ];
+      renderPracticeBatchCards();
+    }
+
+    /**
+     * 「＋ もう1日分を追加」ボタン処理
+     * 直前のカードに入力されていた「対象イベント」を自動的に新しいカードのデフォルト値へコピーする
+     */
+    function addPracticeBatchCard() {
+      const prevCard = practiceBatchCards[practiceBatchCards.length - 1];
+      const inheritedTarget = prevCard ? (prevCard.targetEvent || '') : getLatestPracticeTargetEvent();
+      const inheritedLocation = prevCard ? (prevCard.location || '多目的') : '多目的';
+      const inheritedPracStart = prevCard ? (prevCard.practiceStart || '18:00') : '18:00';
+      const inheritedPracEnd = prevCard ? (prevCard.practiceEnd || '22:00') : '22:00';
+      const inheritedGassouStart = prevCard ? prevCard.gassouStart : '19:00';
+      const inheritedGassouEnd = prevCard ? prevCard.gassouEnd : '21:30';
+
+      practiceBatchCards.push({
+        tempId: 'prac_card_' + Date.now() + '_' + practiceBatchCards.length,
+        date: '',
+        location: inheritedLocation,
+        practiceStart: inheritedPracStart,
+        practiceEnd: inheritedPracEnd,
+        gassouStart: inheritedGassouStart,
+        gassouEnd: inheritedGassouEnd,
+        targetEvent: inheritedTarget
+      });
+
+      renderPracticeBatchCards();
+      showToast(`練習日程を1日分追加しました（対象イベント「${inheritedTarget || '未設定'}」を引き継ぎ）`, 'info');
+    }
+
+    function removePracticeBatchCard(index) {
+      if (practiceBatchCards.length <= 1) return;
+      practiceBatchCards.splice(index, 1);
+      renderPracticeBatchCards();
+    }
+
+    function resetPracticeBatchCards() {
+      initPracticeBatchCards('');
+      showToast('練習日程の入力欄をリセットしました', 'info');
+    }
+
+    function updatePracticeBatchField(index, field, value) {
+      if (!practiceBatchCards[index]) return;
+      practiceBatchCards[index][field] = value;
+
+      if (field === 'date') {
+        const labelEl = document.getElementById(`batch-date-label-${index}`);
+        if (labelEl) {
+          labelEl.textContent = value ? formatDate(value) : '日付を選択してください';
+        }
+      }
+    }
+
+    function applyQuickTargetToCard(index, text) {
+      if (!practiceBatchCards[index]) return;
+      practiceBatchCards[index].targetEvent = text;
+      const inputEl = document.getElementById(`batch-target-input-${index}`);
+      if (inputEl) inputEl.value = text;
+    }
+
+    /**
+     * 練習日程一括登録カード群の描画
+     */
+    function renderPracticeBatchCards() {
+      const container = document.getElementById('practice-batch-cards');
+      const countSpan = document.getElementById('practice-batch-count');
+      if (!container) return;
+
+      container.innerHTML = '';
+      if (countSpan) countSpan.textContent = String(practiceBatchCards.length);
+
+      const canDelete = practiceBatchCards.length > 1;
+      const suggestions = getRecentTargetEventSuggestions();
+
+      practiceBatchCards.forEach((card, index) => {
+        const cardEl = document.createElement('div');
+        cardEl.className = 'p-3.5 sm:p-4 rounded-xl border-2 border-emerald-200/80 bg-slate-50/70 space-y-3 transition-all';
+
+        const chipsHtml = suggestions.length > 0
+          ? `<div class="flex flex-wrap items-center gap-1.5 mt-1.5">
+              <span class="text-[10px] text-slate-400">履歴から入力:</span>
+              ${suggestions.map(s => `
+                <button type="button" onclick="applyQuickTargetToCard(${index}, '${escapeJsString(s)}')" class="text-[11px] bg-white hover:bg-emerald-50 active:bg-emerald-100 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded-full font-medium transition-colors">
+                  ${escapeHtml(s)}
+                </button>
+              `).join('')}
+            </div>`
+          : '';
+
+        cardEl.innerHTML = `
+          <!-- カードヘッダー -->
+          <div class="flex items-center justify-between border-b border-slate-200/80 pb-2">
+            <div class="flex items-center gap-2">
+              <span class="bg-emerald-600 text-white text-xs font-bold px-2.5 py-0.5 rounded-full">
+                練習 #${index + 1}
+              </span>
+              <span id="batch-date-label-${index}" class="text-xs font-bold text-slate-600">
+                ${card.date ? formatDate(card.date) : '日付を選択してください'}
+              </span>
+            </div>
+            ${canDelete ? `
+              <button type="button" onclick="removePracticeBatchCard(${index})" class="text-xs bg-white hover:bg-rose-50 active:bg-rose-100 text-rose-600 border border-rose-200 font-bold px-2.5 py-1 rounded-lg flex items-center gap-1 transition-colors">
+                <i class="fa-solid fa-xmark"></i> 削除
+              </button>
+            ` : ''}
+          </div>
+
+          <!-- 1段目：日付 ＆ 練習場所 -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-bold text-slate-600 mb-1">
+                日付 <span class="text-rose-500">*</span>
+              </label>
+              <input type="date" id="batch-date-input-${index}" value="${escapeHtml(card.date)}" onchange="updatePracticeBatchField(${index}, 'date', this.value)" class="w-full border border-slate-300 rounded-xl p-2.5 text-sm bg-white font-medium focus:ring-2 focus:ring-emerald-500 outline-none">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-600 mb-1">練習場所</label>
+              <select onchange="updatePracticeBatchField(${index}, 'location', this.value)" class="w-full border border-slate-300 rounded-xl p-2.5 text-sm bg-white font-medium focus:ring-2 focus:ring-emerald-500 outline-none">
+                ${PRACTICE_LOCATIONS.map(loc => `<option value="${loc}" ${card.location === loc ? 'selected' : ''}>${loc}</option>`).join('')}
+              </select>
+            </div>
+          </div>
+
+          <!-- 2段目：練習時間（ドラムロール選択：デフォルト 18:00〜22:00） -->
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">
+              <i class="fa-regular fa-clock text-emerald-600 mr-1"></i>練習時間（スクロール選択）
+            </label>
+            <div class="flex items-center gap-2">
+              <select onchange="updatePracticeBatchField(${index}, 'practiceStart', this.value)" class="flex-1 border border-slate-300 rounded-xl p-2.5 text-sm bg-white font-bold text-slate-800 focus:ring-2 focus:ring-emerald-500 outline-none">
+                ${buildTimeSelectOptions(card.practiceStart, false)}
+              </select>
+              <span class="text-slate-500 font-bold text-sm">〜</span>
+              <select onchange="updatePracticeBatchField(${index}, 'practiceEnd', this.value)" class="flex-1 border border-slate-300 rounded-xl p-2.5 text-sm bg-white font-bold text-slate-800 focus:ring-2 focus:ring-emerald-500 outline-none">
+                ${buildTimeSelectOptions(card.practiceEnd, false)}
+              </select>
+            </div>
+          </div>
+
+          <!-- 3段目：合奏時間（ドラムロール選択：デフォルト 19:00〜21:30） -->
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">
+              <i class="fa-solid fa-music text-emerald-600 mr-1"></i>合奏時間（スクロール選択）
+            </label>
+            <div class="flex items-center gap-2">
+              <select onchange="updatePracticeBatchField(${index}, 'gassouStart', this.value)" class="flex-1 border border-slate-300 rounded-xl p-2.5 text-sm bg-white font-semibold text-slate-800 focus:ring-2 focus:ring-emerald-500 outline-none">
+                ${buildTimeSelectOptions(card.gassouStart, true)}
+              </select>
+              <span class="text-slate-500 font-bold text-sm">〜</span>
+              <select onchange="updatePracticeBatchField(${index}, 'gassouEnd', this.value)" class="flex-1 border border-slate-300 rounded-xl p-2.5 text-sm bg-white font-semibold text-slate-800 focus:ring-2 focus:ring-emerald-500 outline-none">
+                ${buildTimeSelectOptions(card.gassouEnd, true)}
+              </select>
+            </div>
+          </div>
+
+          <!-- 4段目：対象イベント（自動引き継ぎ対応） -->
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <label class="block text-xs font-bold text-slate-600">
+                対象イベント（どの本番の曲を練習するか）
+              </label>
+              ${card.targetEvent ? `
+                <button type="button" onclick="applyQuickTargetToCard(${index}, '')" class="text-[11px] text-slate-400 hover:text-slate-600 underline">
+                  空欄にする
+                </button>
+              ` : ''}
+            </div>
+            <input type="text" id="batch-target-input-${index}" value="${escapeHtml(card.targetEvent)}" placeholder="例: 定期演奏会、市民音楽祭" oninput="updatePracticeBatchField(${index}, 'targetEvent', this.value)" class="w-full border border-slate-300 rounded-xl p-2.5 text-sm bg-white focus:ring-2 focus:ring-emerald-500 outline-none">
+            ${chipsHtml}
+          </div>
+        `;
+
+        container.appendChild(cardEl);
+      });
+    }
+
+    /**
+     * 入力された複数練習日程を一括登録する
+     */
+    function submitPracticeBatch() {
+      if (practiceBatchCards.length === 0) return;
+
+      // 日付未入力チェック
+      for (let i = 0; i < practiceBatchCards.length; i++) {
+        if (!practiceBatchCards[i].date) {
+          showToast(`「練習 #${i + 1}」の日付を選択してください`, 'error');
+          const dateEl = document.getElementById(`batch-date-input-${i}`);
+          if (dateEl) dateEl.focus();
+          return;
+        }
+      }
+
+      if (!state.events) state.events = [];
+      const baseTs = Date.now();
+      let lastTargetEvent = '';
+
+      practiceBatchCards.forEach((card, idx) => {
+        const practiceTimeStr = formatTimeRange(card.practiceStart, card.practiceEnd);
+        const gassouTimeStr = (card.gassouStart && card.gassouEnd)
+          ? formatTimeRange(card.gassouStart, card.gassouEnd)
+          : (card.gassouStart || card.gassouEnd || '');
+
+        lastTargetEvent = (card.targetEvent || '').trim();
+
+        state.events.push({
+          id: `e_${baseTs}_${idx}`,
+          type: 'practice',
+          date: card.date,
+          location: card.location || '多目的',
+          practiceTime: practiceTimeStr,
+          gassouTime: gassouTimeStr,
+          targetEvent: lastTargetEvent,
+          attendance: {}
+        });
+      });
+
+      const registeredCount = practiceBatchCards.length;
+      saveState();
+
+      // 次の入力のために1枚に戻し、最後の対象イベントを引き継ぐ
+      initPracticeBatchCards(lastTargetEvent);
+      renderScheduleList();
+      showToast(`${registeredCount}件の練習日程をまとめて登録しました！`, 'success');
+    }
+
+    /**
+     * 本番日程フォームの初期時間選択肢をセットアップ
+     */
+    function initPerformanceFormSelects() {
+      const meetSel = document.getElementById('perf-meeting-time');
+      const startSel = document.getElementById('perf-start-time');
+      if (meetSel) meetSel.innerHTML = buildTimeSelectOptions('09:00', true);
+      if (startSel) startSel.innerHTML = buildTimeSelectOptions('14:00', true);
+    }
+
+    function submitPerformanceEvent(event) {
+      event.preventDefault();
+      const date = document.getElementById('perf-date').value;
+      const perfName = document.getElementById('perf-name').value.trim();
+      const perfLocation = document.getElementById('perf-location').value.trim();
+      const meetingTime = document.getElementById('perf-meeting-time').value;
+      const startTime = document.getElementById('perf-start-time').value;
+      const songs = document.getElementById('perf-songs').value.trim();
+
+      if (!date || !perfName) {
+        showToast('日付と本番イベント名を入力してください', 'error');
+        return;
+      }
+
+      if (!state.events) state.events = [];
+      state.events.push({
+        id: 'e_' + Date.now(),
+        type: 'performance',
+        date,
+        perfName,
+        perfLocation,
+        meetingTime,
+        startTime,
+        songs,
+        attendance: {}
+      });
+
+      saveState();
+      resetPerformanceForm();
+      renderScheduleList();
+      showToast(`本番日程「${perfName}」を登録しました`, 'success');
+    }
+
+    function resetPerformanceForm() {
+      document.getElementById('perf-date').value = '';
+      document.getElementById('perf-name').value = '';
+      document.getElementById('perf-location').value = '';
+      document.getElementById('perf-songs').value = '';
+      initPerformanceFormSelects();
+    }
+
+    /**
+     * 登録済み日程一覧の描画
+     */
+    function renderScheduleList() {
+      const container = document.getElementById('schedule-list');
+      const countEl = document.getElementById('registered-events-count');
+      if (!container) return;
+
+      container.innerHTML = '';
+      const sorted = [...(state.events || [])].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+      if (countEl) countEl.textContent = `${sorted.length}件`;
+
+      if (sorted.length === 0) {
+        container.innerHTML = `<p class="text-center text-slate-400 py-4 text-xs">登録された日程はありません</p>`;
+        return;
+      }
+
+      sorted.forEach(evt => {
+        const isPerf = evt.type === 'performance';
+        const item = document.createElement('div');
+        item.className = 'p-3 bg-slate-50 border border-slate-200 rounded-xl flex justify-between items-center gap-2 text-xs';
+        item.innerHTML = `
+          <div class="min-w-0">
+            <div class="flex flex-wrap items-center gap-1.5">
+              <span class="font-bold text-slate-800 text-sm">${formatDate(evt.date)}</span>
+              <span class="font-bold px-2 py-0.5 rounded text-[11px] ${isPerf ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}">
+                ${isPerf ? '本番: ' + escapeHtml(evt.perfName || '') : '練習: ' + escapeHtml(evt.location || '')}
+              </span>
+            </div>
+            <p class="text-slate-500 mt-1 truncate">
+              ${!isPerf
+                ? `練習: ${escapeHtml(evt.practiceTime || '未定')} / 合奏: ${escapeHtml(evt.gassouTime || 'なし')} / 対象: ${escapeHtml(evt.targetEvent || '未設定')}`
+                : `会場: ${escapeHtml(evt.perfLocation || '未定')} / 集合: ${escapeHtml(evt.meetingTime || '未定')} / 開演: ${escapeHtml(evt.startTime || '未定')}`}
+            </p>
+          </div>
+          <div class="flex items-center gap-1.5 shrink-0">
+            <button type="button" onclick="openEditEventModal('${evt.id}')" class="bg-white border border-emerald-200 text-emerald-700 hover:bg-emerald-50 px-2.5 py-1.5 rounded-lg font-bold">編集</button>
+            <button type="button" onclick="confirmDeleteEvent('${evt.id}', event)" class="bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 px-2.5 py-1.5 rounded-lg font-bold">削除</button>
+          </div>`;
+        container.appendChild(item);
+      });
+    }
+
+    /**
+     * 登録済み日程の編集モーダルを開く
+     */
+    function openEditEventModal(id) {
+      const evt = (state.events || []).find(e => e.id === id);
+      if (!evt) return;
+
+      document.getElementById('edit-modal-id').value = evt.id;
+      document.getElementById('edit-modal-type').value = evt.type;
+      document.getElementById('edit-modal-date').value = evt.date || '';
+
+      const pracFields = document.getElementById('edit-modal-practice-fields');
+      const perfFields = document.getElementById('edit-modal-performance-fields');
+
+      if (evt.type === 'practice') {
+        pracFields.classList.remove('hidden');
+        perfFields.classList.add('hidden');
+
+        const locSel = document.getElementById('edit-modal-location');
+        locSel.value = PRACTICE_LOCATIONS.includes(evt.location) ? evt.location : 'その他';
+
+        const pracParsed = parseTimeRange(evt.practiceTime, '18:00', '22:00');
+        document.getElementById('edit-modal-prac-start').innerHTML = buildTimeSelectOptions(pracParsed.start, false);
+        document.getElementById('edit-modal-prac-end').innerHTML = buildTimeSelectOptions(pracParsed.end, false);
+
+        const gassouParsed = parseTimeRange(evt.gassouTime, '', '');
+        document.getElementById('edit-modal-gassou-start').innerHTML = buildTimeSelectOptions(gassouParsed.start, true);
+        document.getElementById('edit-modal-gassou-end').innerHTML = buildTimeSelectOptions(gassouParsed.end, true);
+
+        document.getElementById('edit-modal-target').value = evt.targetEvent || '';
+      } else {
+        pracFields.classList.add('hidden');
+        perfFields.classList.remove('hidden');
+
+        document.getElementById('edit-modal-perf-name').value = evt.perfName || '';
+        document.getElementById('edit-modal-perf-location').value = evt.perfLocation || '';
+
+        const meetVal = TIME_SLOTS.includes(evt.meetingTime) ? evt.meetingTime : '';
+        const startVal = TIME_SLOTS.includes(evt.startTime) ? evt.startTime : '';
+        document.getElementById('edit-modal-meeting-time').innerHTML = buildTimeSelectOptions(meetVal, true);
+        document.getElementById('edit-modal-start-time').innerHTML = buildTimeSelectOptions(startVal, true);
+
+        document.getElementById('edit-modal-songs').value = evt.songs || '';
+      }
+
+      document.getElementById('modal-edit-event').classList.remove('hidden');
+    }
+
+    function saveEditedEvent(event) {
+      event.preventDefault();
+      const id = document.getElementById('edit-modal-id').value;
+      const type = document.getElementById('edit-modal-type').value;
+      const date = document.getElementById('edit-modal-date').value;
+
+      const idx = (state.events || []).findIndex(e => e.id === id);
+      if (idx === -1 || !date) return;
+
+      const existing = state.events[idx];
+      if (type === 'practice') {
+        const pStart = document.getElementById('edit-modal-prac-start').value;
+        const pEnd = document.getElementById('edit-modal-prac-end').value;
+        const gStart = document.getElementById('edit-modal-gassou-start').value;
+        const gEnd = document.getElementById('edit-modal-gassou-end').value;
+
+        state.events[idx] = {
+          ...existing,
+          date,
+          location: document.getElementById('edit-modal-location').value,
+          practiceTime: formatTimeRange(pStart, pEnd),
+          gassouTime: (gStart && gEnd) ? formatTimeRange(gStart, gEnd) : (gStart || gEnd || ''),
+          targetEvent: document.getElementById('edit-modal-target').value.trim()
+        };
+      } else {
+        state.events[idx] = {
+          ...existing,
+          date,
+          perfName: document.getElementById('edit-modal-perf-name').value.trim(),
+          perfLocation: document.getElementById('edit-modal-perf-location').value.trim(),
+          meetingTime: document.getElementById('edit-modal-meeting-time').value,
+          startTime: document.getElementById('edit-modal-start-time').value,
+          songs: document.getElementById('edit-modal-songs').value.trim()
+        };
+      }
+
+      saveState();
+      closeModal('modal-edit-event');
+      renderCurrentView();
+      showToast('日程の変更を保存しました', 'success');
+    }
+
+    // ========================================================
+    // 9. モーダル & カスタム通知（alert / confirm 不使用）
+    // ========================================================
+    function showSongsModal(eventId, event) {
+      if (event) event.stopPropagation();
+      const evt = (state.events || []).find(e => e.id === eventId);
+      if (!evt) return;
+
+      document.getElementById('modal-songs-title').textContent = evt.perfName || '本番演奏';
+      document.getElementById('modal-songs-location').textContent = evt.perfLocation || '未定';
+      document.getElementById('modal-songs-time').textContent = `集合: ${evt.meetingTime || '未定'} / 開演: ${evt.startTime || '未定'}`;
+      document.getElementById('modal-songs-content').textContent = evt.songs || '曲目・カット指定なし';
+
+      document.getElementById('modal-songs').classList.remove('hidden');
+    }
+
+    function showSummaryModal(eventId) {
+      const evt = (state.events || []).find(e => e.id === eventId);
+      if (!evt) return;
+
+      document.getElementById('modal-summary-date').textContent = formatDate(evt.date);
+      document.getElementById('modal-summary-title').textContent =
+        evt.type === 'performance' ? (evt.perfName || '本番') : `練習 (${evt.location || '未定'})`;
+
+      const detailsDiv = document.getElementById('modal-summary-details');
+      if (evt.type === 'practice') {
+        detailsDiv.innerHTML = `
+          <p><strong>練習場所:</strong> ${escapeHtml(evt.location || '未設定')}</p>
+          <p><strong>練習時間:</strong> ${escapeHtml(evt.practiceTime || '未設定')}</p>
+          <p><strong>合奏時間:</strong> ${escapeHtml(evt.gassouTime || 'なし')}</p>
+          <p><strong>対象イベント:</strong> ${escapeHtml(evt.targetEvent || '未設定')}</p>`;
+      } else {
+        detailsDiv.innerHTML = `
+          <p><strong>会場:</strong> ${escapeHtml(evt.perfLocation || '未定')}</p>
+          <p><strong>時間:</strong> 集合 ${escapeHtml(evt.meetingTime || '未定')} / 開演 ${escapeHtml(evt.startTime || '未定')}</p>`;
+      }
+
+      const activeMembers = (state.members || []).filter(m => m.status === 'active' || m.status === 'extra');
+      const partsDiv = document.getElementById('modal-summary-parts');
+      partsDiv.innerHTML = '';
+
+      const attendanceMap = evt.attendance || {};
+      let totalAttended = 0;
+      let totalMaybe = 0;
+      let totalAbsent = 0;
+
+      activeMembers.forEach(m => {
+        const st = attendanceMap[m.id] ? attendanceMap[m.id].status : '';
+        if (st === '○') totalAttended++;
+        else if (st === '△') totalMaybe++;
+        else if (st === '×') totalAbsent++;
+      });
+
+      document.getElementById('modal-summary-yes').textContent = `${totalAttended}名`;
+      document.getElementById('modal-summary-maybe').textContent = `${totalMaybe}名`;
+      document.getElementById('modal-summary-no').textContent = `${totalAbsent}名`;
+
+      PARTS.forEach(part => {
+        const members = activeMembers.filter(m => m.part === part);
+        if (members.length === 0) return;
+
+        let attendedCount = 0;
+        let maybeCount = 0;
+        let absentCount = 0;
+        members.forEach(m => {
+          const st = attendanceMap[m.id] ? attendanceMap[m.id].status : '';
+          if (st === '○') attendedCount++;
+          else if (st === '△') maybeCount++;
+          else if (st === '×') absentCount++;
+        });
+
+        const percent = Math.round((attendedCount / members.length) * 100);
+
+        partsDiv.innerHTML += `
+          <div>
+            <div class="flex justify-between items-center font-semibold text-slate-700">
+              <span>${escapeHtml(part)}</span>
+              <div class="flex items-center gap-2">
+                <span class="text-[10px] text-slate-400 font-normal">△${maybeCount} / ×${absentCount}</span>
+                <span class="text-emerald-700 font-bold">○ ${attendedCount} / ${members.length} 名</span>
+              </div>
+            </div>
+            <div class="w-full bg-slate-200 rounded-full h-2 mt-1 overflow-hidden">
+              <div class="bg-emerald-600 h-2 rounded-full transition-all duration-300" style="width: ${percent}%"></div>
+            </div>
+          </div>`;
+      });
+
+      document.getElementById('modal-summary-total').textContent = `○ 合計 ${totalAttended} / ${activeMembers.length} 名`;
+
+      // 本番時の交通手段サマリー
+      const transportWrapper = document.getElementById('modal-summary-transport-wrapper');
+      const transportContainer = document.getElementById('modal-summary-transport');
+      if (evt.type === 'performance') {
+        transportWrapper.classList.remove('hidden');
+        const counts = {};
+        TRANSPORT_OPTIONS.forEach(opt => { counts[opt] = 0; });
+        let unsetCount = 0;
+
+        activeMembers.forEach(m => {
+          const att = attendanceMap[m.id];
+          if (att && att.status === '○') {
+            if (att.transport && Object.prototype.hasOwnProperty.call(counts, att.transport)) {
+              counts[att.transport]++;
+            } else {
+              unsetCount++;
+            }
+          }
+        });
+
+        let transHtml = TRANSPORT_OPTIONS.map(opt => `
+          <div class="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 flex justify-between items-center">
+            <span class="text-slate-600 truncate pr-1">${escapeHtml(opt)}</span>
+            <span class="font-bold text-slate-800 shrink-0">${counts[opt]}名</span>
+          </div>`).join('');
+
+        if (unsetCount > 0) {
+          transHtml += `
+            <div class="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 flex justify-between items-center">
+              <span class="text-slate-400">未選択 (○のみ)</span>
+              <span class="font-bold text-slate-600">${unsetCount}名</span>
+            </div>`;
+        }
+        transportContainer.innerHTML = transHtml;
+      } else {
+        transportWrapper.classList.add('hidden');
+      }
+
+      document.getElementById('modal-summary').classList.remove('hidden');
+    }
+
+    function closeModal(id) {
+      const el = document.getElementById(id);
+      if (el) el.classList.add('hidden');
+    }
+
+    function closeModalOnBackdrop(event, id) {
+      if (event.target && event.target.id === id) {
+        closeModal(id);
+      }
+    }
+
+    let confirmYesCallback = null;
+    function showConfirm(title, message, onYes) {
+      document.getElementById('confirm-modal-title').textContent = title;
+      document.getElementById('confirm-modal-message').textContent = message;
+      confirmYesCallback = onYes;
+      document.getElementById('modal-confirm').classList.remove('hidden');
+    }
+
+    function handleConfirmYes() {
+      closeModal('modal-confirm');
+      if (confirmYesCallback) {
+        confirmYesCallback();
+        confirmYesCallback = null;
+      }
+    }
+
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      const bgColor = type === 'success' ? 'bg-emerald-600' : type === 'error' ? 'bg-rose-600' : 'bg-slate-800';
+      toast.className = `${bgColor} text-white text-xs font-bold px-4 py-3 rounded-xl shadow-lg flex items-center justify-between pointer-events-auto transition-all duration-300 opacity-0 translate-y-2 max-w-sm w-full`;
+      toast.innerHTML = `
+        <span class="leading-snug">${escapeHtml(message)}</span>
+        <button type="button" onclick="this.parentElement.remove()" class="ml-3 text-white/80 hover:text-white text-base font-bold shrink-0">&times;</button>`;
+      container.appendChild(toast);
+
+      requestAnimationFrame(() => {
+        toast.classList.remove('opacity-0', 'translate-y-2');
+      });
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+      }, 3600);
+    }
+
+    // ========================================================
+    // 10. ユーティリティ関数
+    // ========================================================
+    function formatTimeRange(start, end) {
+      if (!start && !end) return '';
+      if (start && end) return `${start}〜${end}`;
+      if (start) return `${start}〜`;
+      return `〜${end}`;
+    }
+
+    function parseTimeRange(str, defaultStart, defaultEnd) {
+      if (!str || typeof str !== 'string') {
+        return { start: defaultStart, end: defaultEnd };
+      }
+      const parts = str.split(/[〜~\-－]/).map(s => s.trim());
+      const startCand = parts[0] || '';
+      const endCand = parts[1] || '';
+      return {
+        start: TIME_SLOTS.includes(startCand) ? startCand : defaultStart,
+        end: TIME_SLOTS.includes(endCand) ? endCand : defaultEnd
+      };
+    }
+
+    function getLocalTodayStr() {
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, '0');
+      const d = String(now.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
+    function formatDate(dateStr) {
+      if (!dateStr) return '';
+      const parts = dateStr.split('-');
+      if (parts.length !== 3) return dateStr;
+      const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+      const days = ['日', '月', '火', '水', '木', '金', '土'];
+      return `${parseInt(parts[1], 10)}/${parseInt(parts[2], 10)}(${days[d.getDay()]})`;
+    }
+
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function escapeJsString(str) {
+      return String(str || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    }
+
+    // グローバルへ公開
+    Object.assign(window, {
+      switchTab,
+      setEventTypeFilter,
+      openInputForMember,
+      saveAttendance,
+      addMember,
+      toggleMemberStatus,
+      deleteMember,
+      switchScheduleMode,
+      addPracticeBatchCard,
+      removePracticeBatchCard,
+      resetPracticeBatchCards,
+      updatePracticeBatchField,
+      applyQuickTargetToCard,
+      submitPracticeBatch,
+      submitPerformanceEvent,
+      resetPerformanceForm,
+      openEditEventModal,
+      saveEditedEvent,
+      confirmDeleteEvent,
+      showSongsModal,
+      showSummaryModal,
+      closeModal,
+      closeModalOnBackdrop,
+      handleConfirmYes,
+      openBackupModal,
+      exportData,
+      importData
+    });
+
+    // アプリ初期化
+    window.addEventListener('DOMContentLoaded', () => {
+      initPerformanceFormSelects();
+      initDatabase();
+      switchTab('main');
+    });
+  </script>
+</body>
+</html>
+
+```
