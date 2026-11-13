@@ -189,7 +189,7 @@
               <i class="fa-solid fa-calendar-plus text-emerald-700"></i>
               <span>練習・本番日程の一括登録</span>
             </h2>
-            <p class="text-xs text-slate-500 mt-0.5">時間は5分刻み選択。「練習」では場所を選択肢から、「本番」では会館集合・現地集合それぞれの集合時刻と開演時間を指定できます。</p>
+            <p class="text-xs text-slate-500 mt-0.5">時間は5分刻み選択。「＋ もう1日分を追加」を押すと前のカードの日付の1週間後・場所・時間・イベントを自動引き継ぎします。</p>
           </div>
         </div>
 
@@ -805,6 +805,16 @@
         const y = now.getFullYear();
         const m = String(now.getMonth() + 1).padStart(2, '0');
         const d = String(now.getDate()).padStart(2, '0');
+        return y + '-' + m + '-' + d;
+      }
+
+      function addDaysToDateString(dateStr, days) {
+        if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return '';
+        const parts = dateStr.split('-').map(Number);
+        const dt = new Date(parts[0], parts[1] - 1, parts[2] + days);
+        const y = dt.getFullYear();
+        const m = String(dt.getMonth() + 1).padStart(2, '0');
+        const d = String(dt.getDate()).padStart(2, '0');
         return y + '-' + m + '-' + d;
       }
 
@@ -1973,15 +1983,22 @@
         const prevType = prevCard ? (prevCard.type || 'practice') : 'practice';
         const prevLoc = prevCard ? (prevCard.location || '多目的室') : '多目的室';
         const locState = resolvePracticeLocationState(prevLoc);
+        const nextDate = (prevCard && prevCard.date) ? addDaysToDateString(prevCard.date, 7) : '';
+
+        const startTime = (prevCard && prevType === 'practice' && prevCard.startTime) ? prevCard.startTime : '18:00';
+        const endTime = (prevCard && prevType === 'practice' && prevCard.endTime) ? prevCard.endTime : '22:00';
+        const ensembleStart = (prevCard && prevType === 'practice' && prevCard.ensembleStart !== undefined) ? prevCard.ensembleStart : '19:00';
+        const ensembleEnd = (prevCard && prevType === 'practice' && prevCard.ensembleEnd !== undefined) ? prevCard.ensembleEnd : '21:30';
+
         return {
-          date: '',
+          date: nextDate,
           type: 'practice',
-          startTime: '18:00',
-          endTime: '22:00',
+          startTime: startTime,
+          endTime: endTime,
           hallMeetingTime: '',
           venueMeetingTime: '',
-          ensembleStart: '19:00',
-          ensembleEnd: '21:30',
+          ensembleStart: ensembleStart,
+          ensembleEnd: ensembleEnd,
           eventName: prevCard ? (prevCard.eventName || '') : '',
           locationMode: prevType === 'practice' && prevCard && prevCard.locationMode ? prevCard.locationMode : locState.locationMode,
           locationPreset: prevType === 'practice' && prevCard && prevCard.locationPreset ? prevCard.locationPreset : locState.locationPreset,
