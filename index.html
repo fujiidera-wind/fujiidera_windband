@@ -122,7 +122,7 @@
         </button>
       </div>
 
-      <!-- Matrix Filters (Schedule Type, Part Filter, Past Schedules Toggle) -->
+      <!-- Matrix Filters (Schedule Type, Part Filter, Auto-Cleanup Notice) -->
       <div class="bg-white rounded-2xl px-3 py-2.5 shadow-xs border border-slate-200 flex flex-wrap items-center justify-between gap-2">
         <!-- Schedule Type Filter Pills -->
         <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
@@ -140,7 +140,7 @@
           </button>
         </div>
 
-        <!-- Part Filter & Past Dates Toggle -->
+        <!-- Part Filter & Auto-Delete Info -->
         <div class="flex flex-wrap items-center gap-2 sm:gap-3">
           <div class="flex items-center gap-1.5">
             <label for="matrix-part-filter" class="text-[11px] font-bold text-slate-500 whitespace-nowrap">パート:</label>
@@ -150,11 +150,10 @@
             </select>
           </div>
 
-          <label class="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 cursor-pointer select-none py-1">
-            <input type="checkbox" id="matrix-show-past" onchange="window.renderMatrix()"
-              class="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500">
-            <span>過去の日程も表示</span>
-          </label>
+          <span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-100 text-[11px] font-medium text-slate-500">
+            <i class="fa-solid fa-broom text-emerald-600"></i>
+            <span>終了済みの日程は自動削除</span>
+          </span>
         </div>
       </div>
 
@@ -233,11 +232,10 @@
             <span>登録済みの日程一覧</span>
             <span id="schedules-total-count" class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-xs font-bold">0件</span>
           </h3>
-          <label class="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 cursor-pointer select-none">
-            <input type="checkbox" id="schedules-show-past" onchange="window.renderSchedulesList()"
-              class="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500">
-            <span>過去の日程も表示</span>
-          </label>
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-[11px] font-bold text-emerald-800">
+            <i class="fa-solid fa-broom"></i>
+            <span>終了した日程（昨日以前）は自動削除されます</span>
+          </span>
         </div>
 
         <div id="schedules-list-container" class="space-y-2.5">
@@ -402,17 +400,13 @@
         </button>
       </div>
 
-      <!-- Member selector & past filter inside modal -->
+      <!-- Member selector inside modal -->
       <div class="px-4 py-2.5 bg-slate-100 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
         <select id="bulk-modal-member-select" onchange="window.handleMyMemberChange(this.value)"
           class="flex-1 min-w-[180px] p-2 rounded-xl border border-slate-300 bg-white text-xs sm:text-sm font-bold text-slate-800">
           <option value="">-- 自分の名前を選択 --</option>
         </select>
-        <label class="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 cursor-pointer select-none">
-          <input type="checkbox" id="bulk-modal-show-past" onchange="window.renderBulkModalList()"
-            class="w-4 h-4 rounded border-slate-300 text-emerald-600">
-          <span>過去日程も表示</span>
-        </label>
+        <span class="text-[11px] font-medium text-slate-500">※終了済み日程は自動削除</span>
       </div>
 
       <div id="bulk-modal-list" class="p-3 sm:p-4 overflow-y-auto space-y-3 flex-1 bg-slate-50">
@@ -775,7 +769,9 @@
         summaryScheduleId: '',
         batchCards: [],
         confirmCallback: null,
-        toastTimer: null
+        toastTimer: null,
+        autoDeleteInProgress: false,
+        autoDeletedScheduleKeys: {}
       };
 
       /* ==================== General Utilities ==================== */
@@ -810,6 +806,13 @@
         const m = String(now.getMonth() + 1).padStart(2, '0');
         const d = String(now.getDate()).padStart(2, '0');
         return y + '-' + m + '-' + d;
+      }
+
+      function isPastSchedule(sched, todayStr) {
+        if (!sched || !sched.date) return false;
+        const dateVal = String(sched.date).trim();
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(dateVal)) return false;
+        return dateVal < todayStr;
       }
 
       function formatDateInfo(dateStr) {
@@ -893,7 +896,7 @@
         clearTimeout(state.toastTimer);
         state.toastTimer = setTimeout(function () {
           banner.classList.add('hidden');
-        }, 3000);
+        }, 3200);
       }
 
       function updateSyncBadge(status) {
@@ -1014,6 +1017,44 @@
         return { status: '', transport: '', note: '' };
       }
 
+      /* ==================== Auto-Delete Finished Past Schedules ==================== */
+      async function autoCleanupExpiredSchedules(rawAttendance) {
+        if (!db || !fbUpdate || state.autoDeleteInProgress) return;
+        const todayStr = getTodayString();
+        const expired = Object.values(state.schedules).filter(function (s) {
+          return isPastSchedule(s, todayStr) && !state.autoDeletedScheduleKeys[s._dbKey];
+        });
+
+        if (expired.length === 0) return;
+
+        state.autoDeleteInProgress = true;
+        const updates = {};
+        expired.forEach(function (s) {
+          state.autoDeletedScheduleKeys[s._dbKey] = true;
+          updates[DB_ROOT + '/schedules/' + s._dbKey] = null;
+          if (rawAttendance && typeof rawAttendance === 'object') {
+            if (s.id in rawAttendance) {
+              updates[DB_ROOT + '/attendance/' + s.id] = null;
+            }
+            if (s._dbKey in rawAttendance) {
+              updates[DB_ROOT + '/attendance/' + s._dbKey] = null;
+            }
+          }
+        });
+
+        try {
+          await fbUpdate(fbRef(db), updates);
+          showToast('終了した過去日程 ' + expired.length + '件を自動削除しました');
+        } catch (err) {
+          console.error('Auto-delete past schedules error:', err);
+          expired.forEach(function (s) {
+            delete state.autoDeletedScheduleKeys[s._dbKey];
+          });
+        } finally {
+          state.autoDeleteInProgress = false;
+        }
+      }
+
       /* ==================== Firebase Initialization (Dynamic Import) ==================== */
       async function initFirebaseListeners() {
         try {
@@ -1042,6 +1083,7 @@
 
               updateSyncBadge('connected');
               renderAllViews();
+              autoCleanupExpiredSchedules(data.attendance);
             },
             function (error) {
               console.error("Firebase read error:", error);
@@ -1175,27 +1217,21 @@
         const tbody = document.getElementById('matrix-tbody');
         if (!thead || !tbody) return;
 
-        const showPastEl = document.getElementById('matrix-show-past');
-        const showPast = showPastEl ? showPastEl.checked : false;
         const partFilterEl = document.getElementById('matrix-part-filter');
         const partFilter = partFilterEl ? partFilterEl.value : 'all';
         const todayStr = getTodayString();
 
-        const allSortedSchedules = Object.values(state.schedules).sort(function (a, b) {
-          return (a.date || '').localeCompare(b.date || '');
-        });
+        const activeSchedules = Object.values(state.schedules)
+          .filter(function (s) { return !isPastSchedule(s, todayStr); })
+          .sort(function (a, b) { return (a.date || '').localeCompare(b.date || ''); });
 
-        const dateFiltered = allSortedSchedules.filter(function (s) {
-          return showPast || (s.date >= todayStr);
-        });
-
-        const practiceCount = dateFiltered.filter(function (s) { return !isPerformanceSchedule(s); }).length;
-        const concertCount = dateFiltered.filter(function (s) { return isPerformanceSchedule(s); }).length;
-        document.getElementById('badge-count-all').textContent = dateFiltered.length;
+        const practiceCount = activeSchedules.filter(function (s) { return !isPerformanceSchedule(s); }).length;
+        const concertCount = activeSchedules.filter(function (s) { return isPerformanceSchedule(s); }).length;
+        document.getElementById('badge-count-all').textContent = activeSchedules.length;
         document.getElementById('badge-count-practice').textContent = practiceCount;
         document.getElementById('badge-count-concert').textContent = concertCount;
 
-        const visibleSchedules = dateFiltered.filter(function (s) {
+        const visibleSchedules = activeSchedules.filter(function (s) {
           if (state.matrixTypeFilter === 'practice') return !isPerformanceSchedule(s);
           if (state.matrixTypeFilter === 'performance') return isPerformanceSchedule(s);
           return true;
@@ -1274,7 +1310,7 @@
         if (visibleSchedules.length === 0) {
           tbody.innerHTML =
             '<tr><td colspan="' + (memberMetaList.length + 1) + '" class="py-10 px-4 text-center text-slate-500 text-sm">' +
-              '表示できる日程がありません。「日程管理」から練習・本番を追加するか、「過去の日程も表示」にチェックを入れてください。' +
+              '表示できる今後の日程がありません。「日程管理」から新しい練習・本番を追加してください。' +
             '</td></tr>';
           return;
         }
@@ -1552,10 +1588,13 @@
 
       window.handleCloseBulkModal = function () {
         const mId = state.selectedMyMemberId;
+        const todayStr = getTodayString();
         if (mId) {
-          const allSchedules = Object.values(state.schedules);
-          for (let i = 0; i < allSchedules.length; i++) {
-            const sched = allSchedules[i];
+          const activeSchedules = Object.values(state.schedules).filter(function (s) {
+            return !isPastSchedule(s, todayStr);
+          });
+          for (let i = 0; i < activeSchedules.length; i++) {
+            const sched = activeSchedules[i];
             if (!isPerformanceSchedule(sched)) continue;
             const rec = getAttendanceRecord(sched.id, mId);
             const effStatus = state.batchPendingStatus[sched.id] !== undefined ? state.batchPendingStatus[sched.id] : rec.status;
@@ -1588,14 +1627,13 @@
 
         if (subEl) subEl.textContent = member.name + '（' + member.part + '）の予定を入力中';
 
-        const showPast = document.getElementById('bulk-modal-show-past').checked;
         const todayStr = getTodayString();
         const schedules = Object.values(state.schedules)
-          .sort(function (a, b) { return (a.date || '').localeCompare(b.date || ''); })
-          .filter(function (s) { return showPast || (s.date >= todayStr); });
+          .filter(function (s) { return !isPastSchedule(s, todayStr); })
+          .sort(function (a, b) { return (a.date || '').localeCompare(b.date || ''); });
 
         if (schedules.length === 0) {
-          listEl.innerHTML = '<div class="py-10 text-center text-slate-500 text-sm">対象となる日程がありません。</div>';
+          listEl.innerHTML = '<div class="py-10 text-center text-slate-500 text-sm">対象となる今後の日程がありません。</div>';
           return;
         }
 
@@ -2239,6 +2277,13 @@
           return;
         }
 
+        const todayStr = getTodayString();
+        const hasPastDate = validCards.some(function (c) { return c.date < todayStr; });
+        if (hasPastDate) {
+          showToast('過去の日付は登録できません（本日以降の日付を選択してください）', 'error');
+          return;
+        }
+
         const updates = {};
         const baseTs = Date.now();
         validCards.forEach(function (c, idx) {
@@ -2296,25 +2341,21 @@
       window.renderSchedulesList = function () {
         const container = document.getElementById('schedules-list-container');
         if (!container) return;
-        const showPastEl = document.getElementById('schedules-show-past');
-        const showPast = showPastEl ? showPastEl.checked : false;
         const todayStr = getTodayString();
 
-        const allList = Object.values(state.schedules).sort(function (a, b) {
-          return (a.date || '').localeCompare(b.date || '');
-        });
-        document.getElementById('schedules-total-count').textContent = allList.length + '件';
+        const activeList = Object.values(state.schedules)
+          .filter(function (s) { return !isPastSchedule(s, todayStr); })
+          .sort(function (a, b) { return (a.date || '').localeCompare(b.date || ''); });
 
-        const filtered = allList.filter(function (s) {
-          return showPast || (s.date >= todayStr);
-        });
-        if (filtered.length === 0) {
+        document.getElementById('schedules-total-count').textContent = activeList.length + '件';
+
+        if (activeList.length === 0) {
           container.innerHTML = '<p class="text-xs sm:text-sm text-slate-400 text-center py-6">表示する登録済み日程がありません。</p>';
           return;
         }
 
         let html = '';
-        filtered.forEach(function (sched) {
+        activeList.forEach(function (sched) {
           const dInfo = formatDateInfo(sched.date);
           const isPerf = isPerformanceSchedule(sched);
           let dateColor = 'text-slate-900';
@@ -2568,7 +2609,17 @@
 
         openConfirmModal(title, msg, '削除する', async function () {
           try {
-            await fbRemove(fbRef(db, DB_ROOT + '/schedules/' + sched._dbKey));
+            const updates = {};
+            updates[DB_ROOT + '/schedules/' + sched._dbKey] = null;
+            if (state.rawSnapshot && state.rawSnapshot.attendance) {
+              if (sched.id in state.rawSnapshot.attendance) {
+                updates[DB_ROOT + '/attendance/' + sched.id] = null;
+              }
+              if (sched._dbKey in state.rawSnapshot.attendance) {
+                updates[DB_ROOT + '/attendance/' + sched._dbKey] = null;
+              }
+            }
+            await fbUpdate(fbRef(db), updates);
             showToast('日程を削除しました');
           } catch (err) {
             console.error(err);
