@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>藤井寺市民音楽団 出席・日程管理</title>
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -13,6 +13,11 @@
   <!-- Font Awesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
   <style>
+    html, body {
+      max-width: 100%;
+      overflow-x: hidden;
+    }
+
     body {
       font-family: 'Noto Sans JP', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       background-color: #f1f5f9;
@@ -20,7 +25,16 @@
       -webkit-tap-highlight-color: transparent;
     }
 
+    /* Prevent iOS Safari date inputs from exceeding container width */
+    input[type="date"] {
+      max-width: 100%;
+      min-width: 0;
+    }
+
     /* Custom scrollbars for the attendance matrix */
+    .matrix-scroll {
+      -webkit-overflow-scrolling: touch;
+    }
     .matrix-scroll::-webkit-scrollbar {
       height: 8px;
       width: 8px;
@@ -52,18 +66,18 @@
     }
   </style>
 </head>
-<body class="min-h-screen flex flex-col">
+<body class="min-h-screen flex flex-col w-full max-w-full overflow-x-hidden">
 
   <!-- ==================== 1. HEADER & NAVIGATION ==================== -->
-  <header class="bg-emerald-900 text-white shadow-md sticky top-0 z-40">
-    <div class="max-w-7xl mx-auto px-3 sm:px-6 pt-3 pb-2">
-      <div class="flex flex-wrap items-center justify-between gap-2">
+  <header class="bg-emerald-900 text-white shadow-md sticky top-0 z-40 w-full max-w-full overflow-x-hidden">
+    <div class="max-w-7xl w-full mx-auto px-3 sm:px-6 pt-3 pb-2">
+      <div class="flex items-center justify-between gap-2 min-w-0">
         <!-- Brand Title, Music Note Announcement Button & Status -->
-        <div class="flex items-center gap-2.5 sm:gap-3 min-w-0">
+        <div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
           <button type="button" id="header-music-note-btn" onclick="window.openAnnouncementsModal()"
             title="お知らせ一覧を表示・作成"
             aria-label="お知らせ一覧を表示・作成"
-            class="relative px-2.5 py-1.5 rounded-xl bg-emerald-700/95 hover:bg-emerald-600 active:bg-emerald-950 border border-emerald-400/60 flex flex-col items-center justify-center shrink-0 shadow-xs transition cursor-pointer">
+            class="relative px-2 sm:px-2.5 py-1.5 rounded-xl bg-emerald-700/95 hover:bg-emerald-600 active:bg-emerald-950 border border-emerald-400/60 flex flex-col items-center justify-center shrink-0 shadow-xs transition cursor-pointer">
             <i class="fa-solid fa-music text-amber-300 text-sm sm:text-base leading-none"></i>
             <span class="text-[9px] font-bold text-emerald-50 tracking-tighter leading-none mt-1">お知らせ</span>
             <span id="announcement-badge-count"
@@ -71,11 +85,11 @@
               0
             </span>
           </button>
-          <div class="min-w-0">
-            <h1 class="text-base sm:text-lg font-bold tracking-tight truncate">藤井寺市民音楽団 出席・日程管理</h1>
-            <div class="flex items-center gap-2 mt-0.5">
+          <div class="min-w-0 flex-1">
+            <h1 class="text-sm sm:text-lg font-bold tracking-tight truncate">藤井寺市民音楽団 出席・日程管理</h1>
+            <div class="flex items-center gap-2 mt-0.5 min-w-0">
               <button type="button" id="sync-status-badge" onclick="window.openAnnouncementsModal()"
-                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/20 text-amber-200 border border-amber-400/30 transition cursor-pointer">
+                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/20 text-amber-200 border border-amber-400/30 transition cursor-pointer max-w-full truncate">
                 🟡 接続中...
               </button>
             </div>
@@ -84,44 +98,44 @@
 
         <!-- Backup / Restore Button -->
         <button type="button" onclick="window.openBackupModal()"
-          class="px-3 py-2 rounded-xl bg-emerald-800 hover:bg-emerald-700 active:bg-emerald-950 border border-emerald-600/70 text-xs sm:text-sm font-bold flex items-center gap-1.5 transition shrink-0 shadow-xs">
+          class="px-2.5 sm:px-3 py-2 rounded-xl bg-emerald-800 hover:bg-emerald-700 active:bg-emerald-950 border border-emerald-600/70 text-xs sm:text-sm font-bold flex items-center gap-1.5 transition shrink-0 shadow-xs">
           <i class="fa-solid fa-database text-emerald-300"></i>
           <span>保存/復元</span>
         </button>
       </div>
 
       <!-- 3 Main Navigation Tabs -->
-      <nav class="grid grid-cols-3 gap-1.5 mt-3 bg-emerald-950/60 p-1 rounded-xl">
+      <nav class="grid grid-cols-3 gap-1.5 mt-3 bg-emerald-950/60 p-1 rounded-xl w-full">
         <button type="button" id="tab-btn-matrix" onclick="window.switchTab('matrix')"
-          class="tab-btn py-2 px-2 rounded-lg text-xs sm:text-sm font-bold transition flex items-center justify-center gap-1.5 bg-white text-emerald-900 shadow-xs">
-          <span>📋 出欠表</span>
+          class="tab-btn py-2 px-1.5 sm:px-2 rounded-lg text-xs sm:text-sm font-bold transition flex items-center justify-center gap-1 sm:gap-1.5 bg-white text-emerald-900 shadow-xs min-w-0">
+          <span class="truncate">📋 出欠表</span>
         </button>
         <button type="button" id="tab-btn-schedules" onclick="window.switchTab('schedules')"
-          class="tab-btn py-2 px-2 rounded-lg text-xs sm:text-sm font-bold transition flex items-center justify-center gap-1.5 text-emerald-100 hover:bg-emerald-800/70">
-          <span>📅 日程管理</span>
+          class="tab-btn py-2 px-1.5 sm:px-2 rounded-lg text-xs sm:text-sm font-bold transition flex items-center justify-center gap-1 sm:gap-1.5 text-emerald-100 hover:bg-emerald-800/70 min-w-0">
+          <span class="truncate">📅 日程管理</span>
         </button>
         <button type="button" id="tab-btn-members" onclick="window.switchTab('members')"
-          class="tab-btn py-2 px-2 rounded-lg text-xs sm:text-sm font-bold transition flex items-center justify-center gap-1.5 text-emerald-100 hover:bg-emerald-800/70">
-          <span>👥 団員管理</span>
+          class="tab-btn py-2 px-1.5 sm:px-2 rounded-lg text-xs sm:text-sm font-bold transition flex items-center justify-center gap-1 sm:gap-1.5 text-emerald-100 hover:bg-emerald-800/70 min-w-0">
+          <span class="truncate">👥 団員管理</span>
         </button>
       </nav>
     </div>
   </header>
 
   <!-- ==================== 2. MAIN CONTENT CONTAINER ==================== -->
-  <main class="flex-1 max-w-7xl w-full mx-auto px-2.5 sm:px-6 py-4 space-y-4">
+  <main class="flex-1 w-full max-w-7xl min-w-0 mx-auto px-2.5 sm:px-6 py-4 space-y-4 overflow-x-hidden">
 
     <!-- ==================== TAB 1: ATTENDANCE MATRIX (出欠表) ==================== -->
-    <section id="view-matrix" class="space-y-3">
+    <section id="view-matrix" class="space-y-3 w-full max-w-full min-w-0">
 
       <!-- Quick Personal Batch Entry Bar -->
-      <div class="bg-white rounded-2xl p-3 sm:p-4 shadow-xs border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-        <div class="flex items-center gap-2 flex-1 min-w-0">
+      <div class="bg-white rounded-2xl p-3 sm:p-4 shadow-xs border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 w-full max-w-full min-w-0">
+        <div class="flex items-center gap-2 flex-1 min-w-0 w-full">
           <label for="my-member-select" class="text-xs font-bold text-slate-600 whitespace-nowrap shrink-0">
             <i class="fa-solid fa-user-check text-emerald-600 mr-1"></i>自分：
           </label>
           <select id="my-member-select" onchange="window.handleMyMemberChange(this.value)"
-            class="flex-1 min-w-0 p-2.5 rounded-xl border border-slate-300 bg-slate-50 text-xs sm:text-sm font-bold text-slate-800 focus:border-emerald-600 focus:bg-white focus:outline-none">
+            class="flex-1 min-w-0 w-full p-2.5 rounded-xl border border-slate-300 bg-slate-50 text-xs sm:text-sm font-bold text-slate-800 focus:border-emerald-600 focus:bg-white focus:outline-none truncate">
             <option value="">-- 自分の名前を選択して記憶 --</option>
           </select>
         </div>
@@ -132,9 +146,9 @@
       </div>
 
       <!-- Matrix Filters (Schedule Type, Part Filter, Auto-Cleanup Notice) -->
-      <div class="bg-white rounded-2xl px-3 py-2.5 shadow-xs border border-slate-200 flex flex-wrap items-center justify-between gap-2">
+      <div class="bg-white rounded-2xl px-3 py-2.5 shadow-xs border border-slate-200 flex flex-wrap items-center justify-between gap-2 w-full max-w-full min-w-0">
         <!-- Schedule Type Filter Pills -->
-        <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+        <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl shrink-0">
           <button type="button" id="filter-type-all" onclick="window.setMatrixFilter('all')"
             class="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-white text-slate-800 shadow-2xs transition">
             すべて <span id="badge-count-all" class="ml-0.5 text-[10px] text-slate-500">0</span>
@@ -150,16 +164,16 @@
         </div>
 
         <!-- Part Filter & Auto-Delete Info -->
-        <div class="flex flex-wrap items-center gap-2 sm:gap-3">
-          <div class="flex items-center gap-1.5">
-            <label for="matrix-part-filter" class="text-[11px] font-bold text-slate-500 whitespace-nowrap">パート:</label>
+        <div class="flex flex-wrap items-center gap-2 sm:gap-3 min-w-0 max-w-full">
+          <div class="flex items-center gap-1.5 min-w-0">
+            <label for="matrix-part-filter" class="text-[11px] font-bold text-slate-500 whitespace-nowrap shrink-0">パート:</label>
             <select id="matrix-part-filter" onchange="window.renderMatrix()"
-              class="p-1.5 rounded-xl border border-slate-300 bg-slate-50 text-xs font-bold text-slate-800 focus:border-emerald-600 focus:outline-none">
+              class="p-1.5 rounded-xl border border-slate-300 bg-slate-50 text-xs font-bold text-slate-800 focus:border-emerald-600 focus:outline-none max-w-[155px] sm:max-w-none truncate">
               <option value="all">全パート表示</option>
             </select>
           </div>
 
-          <span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-100 text-[11px] font-medium text-slate-500">
+          <span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-100 text-[11px] font-medium text-slate-500 shrink-0">
             <i class="fa-solid fa-broom text-emerald-600"></i>
             <span>終了済みの日程は自動削除</span>
           </span>
@@ -167,14 +181,14 @@
       </div>
 
       <!-- Helper Instruction Strip -->
-      <div class="flex flex-wrap items-center justify-between gap-2 px-1 text-[11px] text-slate-500">
+      <div class="flex flex-wrap items-center justify-between gap-2 px-1 text-[11px] text-slate-500 w-full max-w-full">
         <span>💡 <b>マスをタップ</b>で出欠を入力（本番は交通手段必須）／<b>左の日程欄をタップ</b>で集計表示</span>
-        <span class="inline-flex items-center gap-1"><span class="px-1.5 py-0.2 rounded bg-blue-600 text-white font-bold text-[10px]">Ex</span> エキストラ</span>
+        <span class="inline-flex items-center gap-1 shrink-0"><span class="px-1.5 py-0.2 rounded bg-blue-600 text-white font-bold text-[10px]">Ex</span> エキストラ</span>
       </div>
 
-      <!-- Responsive Matrix Table Container -->
-      <div class="bg-white rounded-2xl shadow-sm border border-slate-300 overflow-hidden">
-        <div class="matrix-scroll overflow-x-auto max-h-[72vh] relative">
+      <!-- Responsive Matrix Table Container (Bounded strictly to device width; internal horizontal scroll only) -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-300 overflow-hidden w-full max-w-full min-w-0">
+        <div class="matrix-scroll overflow-x-auto max-h-[72vh] relative w-full max-w-full">
           <table class="border-collapse w-max min-w-full text-xs">
             <thead id="matrix-thead" class="sticky top-0 z-30">
               <!-- Populated dynamically by JS -->
@@ -188,12 +202,12 @@
     </section>
 
     <!-- ==================== TAB 2: SCHEDULE MANAGER (日程管理) ==================== -->
-    <section id="view-schedules" class="hidden space-y-5">
+    <section id="view-schedules" class="hidden space-y-5 w-full max-w-full min-w-0">
 
       <!-- Multi-Card Batch Schedule Registration -->
-      <div class="bg-white rounded-2xl p-4 sm:p-5 shadow-xs border border-slate-200 space-y-4">
+      <div class="bg-white rounded-2xl p-3.5 sm:p-5 shadow-xs border border-slate-200 space-y-4 w-full max-w-full min-w-0">
         <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-          <div>
+          <div class="min-w-0">
             <h2 class="text-base sm:text-lg font-bold text-slate-800 flex items-center gap-2">
               <i class="fa-solid fa-calendar-plus text-emerald-700"></i>
               <span>練習・本番日程の一括登録</span>
@@ -203,7 +217,7 @@
         </div>
 
         <!-- Previously Used Event Chips -->
-        <div id="recent-events-wrapper" class="hidden space-y-1.5 bg-slate-50 p-3 rounded-xl border border-slate-200">
+        <div id="recent-events-wrapper" class="hidden space-y-1.5 bg-slate-50 p-3 rounded-xl border border-slate-200 w-full max-w-full min-w-0">
           <div class="text-[11px] font-bold text-slate-600">
             <i class="fa-solid fa-clock-rotate-left text-emerald-700 mr-1"></i>過去の対象イベント（タップで最後のカードに入力）:
           </div>
@@ -213,7 +227,7 @@
         </div>
 
         <!-- Dynamic Cards Container -->
-        <div id="batch-cards-container" class="space-y-3">
+        <div id="batch-cards-container" class="space-y-3 w-full max-w-full min-w-0">
           <!-- Cards generated by JS -->
         </div>
 
@@ -234,7 +248,7 @@
       </div>
 
       <!-- Registered Schedules List -->
-      <div class="bg-white rounded-2xl p-4 sm:p-5 shadow-xs border border-slate-200 space-y-3">
+      <div class="bg-white rounded-2xl p-3.5 sm:p-5 shadow-xs border border-slate-200 space-y-3 w-full max-w-full min-w-0">
         <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
           <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
             <i class="fa-solid fa-list-ul text-emerald-700"></i>
@@ -247,43 +261,43 @@
           </span>
         </div>
 
-        <div id="schedules-list-container" class="space-y-2.5">
+        <div id="schedules-list-container" class="space-y-2.5 w-full max-w-full min-w-0">
           <!-- Populated by JS -->
         </div>
       </div>
     </section>
 
     <!-- ==================== TAB 3: MEMBER MANAGER (団員管理) ==================== -->
-    <section id="view-members" class="hidden space-y-5">
+    <section id="view-members" class="hidden space-y-5 w-full max-w-full min-w-0">
 
       <!-- Add New Member Form -->
-      <div class="bg-white rounded-2xl p-4 sm:p-5 shadow-xs border border-slate-200 space-y-3">
+      <div class="bg-white rounded-2xl p-3.5 sm:p-5 shadow-xs border border-slate-200 space-y-3 w-full max-w-full min-w-0">
         <h2 class="text-base sm:text-lg font-bold text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-2.5">
           <i class="fa-solid fa-user-plus text-emerald-700"></i>
           <span>新規メンバー登録</span>
         </h2>
 
         <form onsubmit="window.handleAddMember(event)" class="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
-          <div class="sm:col-span-4">
+          <div class="sm:col-span-4 min-w-0">
             <label for="new-member-name" class="block text-xs font-bold text-slate-600 mb-1">名前（必須）</label>
             <input type="text" id="new-member-name" required placeholder="例：山田 太郎"
-              class="w-full p-2.5 rounded-xl border border-slate-300 text-sm focus:border-emerald-600 focus:outline-none">
+              class="w-full min-w-0 p-2.5 rounded-xl border border-slate-300 text-sm focus:border-emerald-600 focus:outline-none">
           </div>
-          <div class="sm:col-span-4">
+          <div class="sm:col-span-4 min-w-0">
             <label for="new-member-part" class="block text-xs font-bold text-slate-600 mb-1">パート（14パート）</label>
-            <select id="new-member-part" class="w-full p-2.5 rounded-xl border border-slate-300 bg-white text-sm font-medium focus:border-emerald-600 focus:outline-none">
+            <select id="new-member-part" class="w-full min-w-0 p-2.5 rounded-xl border border-slate-300 bg-white text-sm font-medium focus:border-emerald-600 focus:outline-none">
               <!-- Populated with 14 parts including Bassoon -->
             </select>
           </div>
-          <div class="sm:col-span-2">
+          <div class="sm:col-span-2 min-w-0">
             <label for="new-member-status" class="block text-xs font-bold text-slate-600 mb-1">区分・状態</label>
-            <select id="new-member-status" class="w-full p-2.5 rounded-xl border border-slate-300 bg-white text-sm font-medium focus:border-emerald-600 focus:outline-none">
+            <select id="new-member-status" class="w-full min-w-0 p-2.5 rounded-xl border border-slate-300 bg-white text-sm font-medium focus:border-emerald-600 focus:outline-none">
               <option value="active">実働団員</option>
               <option value="extra">エキストラ</option>
               <option value="inactive">休団中</option>
             </select>
           </div>
-          <div class="sm:col-span-2">
+          <div class="sm:col-span-2 min-w-0">
             <button type="submit"
               class="w-full py-2.5 px-4 rounded-xl bg-emerald-700 hover:bg-emerald-800 active:bg-emerald-900 text-white font-bold text-sm shadow-xs transition">
               追加する
@@ -293,7 +307,7 @@
       </div>
 
       <!-- Members Grouped by 14 Parts -->
-      <div class="bg-white rounded-2xl p-4 sm:p-5 shadow-xs border border-slate-200 space-y-3">
+      <div class="bg-white rounded-2xl p-3.5 sm:p-5 shadow-xs border border-slate-200 space-y-3 w-full max-w-full min-w-0">
         <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
           <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
             <i class="fa-solid fa-users text-emerald-700"></i>
@@ -304,7 +318,7 @@
           </div>
         </div>
 
-        <div id="members-grouped-container" class="space-y-3">
+        <div id="members-grouped-container" class="space-y-3 w-full max-w-full min-w-0">
           <!-- Populated by JS -->
         </div>
       </div>
@@ -314,10 +328,10 @@
 
   <!-- ==================== 3. MODALS ==================== -->
   <div id="modal-backdrop" onclick="window.handleBackdropClick(event)"
-    class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-[1px] z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+    class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-[1px] z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 max-w-full overflow-x-hidden">
 
     <!-- MODAL A: Attendance Cell Input Modal (セルタップ出欠入力) -->
-    <div id="modal-cell-input" class="hidden bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl shadow-2xl border border-slate-200 overflow-hidden max-h-[92vh] flex flex-col">
+    <div id="modal-cell-input" class="hidden bg-white w-full max-w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl shadow-2xl border border-slate-200 overflow-hidden max-h-[92vh] flex flex-col">
       <div class="px-4 py-3.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
         <div class="min-w-0">
           <h3 id="cell-modal-member-title" class="font-bold text-base text-slate-900 truncate">団員名（パート）</h3>
@@ -396,7 +410,7 @@
     </div>
 
     <!-- MODAL B: Bulk Personal Input Modal (自分の予定をまとめて入力) -->
-    <div id="modal-bulk-input" class="hidden bg-white w-full sm:max-w-2xl rounded-t-3xl sm:rounded-2xl shadow-2xl border border-slate-200 overflow-hidden max-h-[92vh] flex flex-col">
+    <div id="modal-bulk-input" class="hidden bg-white w-full max-w-full sm:max-w-2xl rounded-t-3xl sm:rounded-2xl shadow-2xl border border-slate-200 overflow-hidden max-h-[92vh] flex flex-col">
       <div class="px-4 py-3.5 bg-emerald-900 text-white flex items-center justify-between">
         <div class="min-w-0">
           <h3 class="font-bold text-base flex items-center gap-1.5">
@@ -412,7 +426,7 @@
       <!-- Member selector inside modal -->
       <div class="px-4 py-2.5 bg-slate-100 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
         <select id="bulk-modal-member-select" onchange="window.handleMyMemberChange(this.value)"
-          class="flex-1 min-w-[180px] p-2 rounded-xl border border-slate-300 bg-white text-xs sm:text-sm font-bold text-slate-800">
+          class="flex-1 min-w-0 w-full sm:min-w-[180px] p-2 rounded-xl border border-slate-300 bg-white text-xs sm:text-sm font-bold text-slate-800">
           <option value="">-- 自分の名前を選択 --</option>
         </select>
         <span class="text-[11px] font-medium text-slate-500">※終了済み日程は自動削除</span>
@@ -431,7 +445,7 @@
     </div>
 
     <!-- MODAL C: Schedule Detail & Part Summary Modal (日程詳細・パート別集計・交通手段集計) -->
-    <div id="modal-summary" class="hidden bg-white w-full sm:max-w-xl rounded-t-3xl sm:rounded-2xl shadow-2xl border border-slate-200 overflow-hidden max-h-[92vh] flex flex-col">
+    <div id="modal-summary" class="hidden bg-white w-full max-w-full sm:max-w-xl rounded-t-3xl sm:rounded-2xl shadow-2xl border border-slate-200 overflow-hidden max-h-[92vh] flex flex-col">
       <div class="px-4 py-3.5 bg-slate-800 text-white flex items-center justify-between">
         <div class="min-w-0 pr-2">
           <span id="summary-modal-badge" class="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-600 text-white mb-0.5">練習</span>
@@ -502,7 +516,7 @@
     </div>
 
     <!-- MODAL D: Edit Schedule Modal (日程編集 - 種別連動・練習場所プルダウン・集合場所別単一時刻選択対応) -->
-    <div id="modal-edit-schedule" class="hidden bg-white w-full sm:max-w-xl rounded-t-3xl sm:rounded-2xl shadow-2xl border border-slate-200 overflow-hidden max-h-[92vh] flex flex-col">
+    <div id="modal-edit-schedule" class="hidden bg-white w-full max-w-full sm:max-w-xl rounded-t-3xl sm:rounded-2xl shadow-2xl border border-slate-200 overflow-hidden max-h-[92vh] flex flex-col">
       <div class="px-4 py-3.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
         <h3 class="font-bold text-base text-slate-800">日程の編集</h3>
         <button type="button" onclick="window.closeAllModals()" class="w-9 h-9 rounded-full bg-slate-200 hover:bg-slate-300 text-slate-700 flex items-center justify-center">
@@ -607,7 +621,7 @@
     </div>
 
     <!-- MODAL E: Edit Member Modal (団員編集・表示順変更) -->
-    <div id="modal-edit-member" class="hidden bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl shadow-2xl border border-slate-200 overflow-hidden">
+    <div id="modal-edit-member" class="hidden bg-white w-full max-w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl shadow-2xl border border-slate-200 overflow-hidden">
       <div class="px-4 py-3.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
         <h3 class="font-bold text-base text-slate-800">団員情報の編集</h3>
         <button type="button" onclick="window.closeAllModals()" class="w-9 h-9 rounded-full bg-slate-200 hover:bg-slate-300 text-slate-700 flex items-center justify-center">
@@ -647,7 +661,7 @@
     </div>
 
     <!-- MODAL F: Backup & Restore Modal (保存/復元) -->
-    <div id="modal-backup" class="hidden bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl shadow-2xl border border-slate-200 overflow-hidden">
+    <div id="modal-backup" class="hidden bg-white w-full max-w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl shadow-2xl border border-slate-200 overflow-hidden">
       <div class="px-4 py-3.5 bg-slate-800 text-white flex items-center justify-between">
         <h3 class="font-bold text-base flex items-center gap-2">
           <i class="fa-solid fa-database text-emerald-400"></i>
@@ -681,7 +695,7 @@
     </div>
 
     <!-- MODAL G: Custom Confirmation Modal (alert/confirm代替) -->
-    <div id="modal-confirm" class="hidden bg-white w-full sm:max-w-sm rounded-t-3xl sm:rounded-2xl shadow-2xl border border-slate-200 overflow-hidden">
+    <div id="modal-confirm" class="hidden bg-white w-full max-w-full sm:max-w-sm rounded-t-3xl sm:rounded-2xl shadow-2xl border border-slate-200 overflow-hidden">
       <div class="p-5 space-y-3">
         <div class="flex items-center gap-2.5">
           <div id="confirm-modal-icon" class="w-10 h-10 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
@@ -704,7 +718,7 @@
     </div>
 
     <!-- MODAL H: Announcements Modal (お知らせ一覧・新規作成・既読確認・LINE共有) -->
-    <div id="modal-announcements" class="hidden bg-white w-full sm:max-w-2xl rounded-t-3xl sm:rounded-2xl shadow-2xl border border-slate-200 overflow-hidden max-h-[92vh] flex flex-col">
+    <div id="modal-announcements" class="hidden bg-white w-full max-w-full sm:max-w-2xl rounded-t-3xl sm:rounded-2xl shadow-2xl border border-slate-200 overflow-hidden max-h-[92vh] flex flex-col">
       <!-- Modal Header -->
       <div class="px-4 py-3.5 bg-emerald-900 text-white flex items-center justify-between">
         <div class="flex items-center gap-2.5 min-w-0">
@@ -726,17 +740,17 @@
 
       <!-- Current Member Selector Bar for Read Receipts -->
       <div class="px-4 py-2.5 bg-slate-100 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
-        <div class="flex items-center gap-2 flex-1 min-w-[200px]">
+        <div class="flex items-center gap-2 flex-1 min-w-0 w-full sm:min-w-[200px]">
           <label for="ann-modal-member-select" class="text-xs font-bold text-slate-700 whitespace-nowrap shrink-0">
             <i class="fa-solid fa-user-check text-emerald-600 mr-1"></i>既読者：
           </label>
           <select id="ann-modal-member-select" onchange="window.handleMyMemberChange(this.value)"
-            class="flex-1 min-w-0 p-2 rounded-xl border border-slate-300 bg-white text-xs sm:text-sm font-bold text-slate-800 focus:border-emerald-600 focus:outline-none">
+            class="flex-1 min-w-0 w-full p-2 rounded-xl border border-slate-300 bg-white text-xs sm:text-sm font-bold text-slate-800 focus:border-emerald-600 focus:outline-none truncate">
             <option value="">-- 自分の名前を選択して既読確認 --</option>
           </select>
         </div>
         <button type="button" id="toggle-ann-create-btn" onclick="window.toggleAnnouncementForm()"
-          class="px-3.5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs transition shrink-0">
+          class="w-full sm:w-auto px-3.5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-2xs transition shrink-0">
           <i class="fa-solid fa-plus"></i>
           <span>新しいお知らせを作成</span>
         </button>
@@ -775,17 +789,17 @@
             <!-- Target Groups Checkboxes -->
             <div>
               <label class="block text-xs font-bold text-slate-700 mb-1.5">お知らせ対象（複数選択可・1つ以上必須）</label>
-              <div class="grid grid-cols-3 gap-2">
-                <label class="flex items-center justify-center gap-1.5 p-2.5 rounded-xl border border-emerald-300 bg-emerald-50/70 cursor-pointer select-none text-xs font-bold text-emerald-950">
-                  <input type="checkbox" id="ann-target-active" value="active" checked class="w-4 h-4 accent-emerald-700 rounded">
+              <div class="grid grid-cols-3 gap-1.5 sm:gap-2">
+                <label class="flex items-center justify-center gap-1 sm:gap-1.5 p-2 sm:p-2.5 rounded-xl border border-emerald-300 bg-emerald-50/70 cursor-pointer select-none text-[11px] sm:text-xs font-bold text-emerald-950">
+                  <input type="checkbox" id="ann-target-active" value="active" checked class="w-4 h-4 accent-emerald-700 rounded shrink-0">
                   <span>実働団員</span>
                 </label>
-                <label class="flex items-center justify-center gap-1.5 p-2.5 rounded-xl border border-blue-300 bg-blue-50/70 cursor-pointer select-none text-xs font-bold text-blue-950">
-                  <input type="checkbox" id="ann-target-extra" value="extra" checked class="w-4 h-4 accent-blue-600 rounded">
+                <label class="flex items-center justify-center gap-1 sm:gap-1.5 p-2 sm:p-2.5 rounded-xl border border-blue-300 bg-blue-50/70 cursor-pointer select-none text-[11px] sm:text-xs font-bold text-blue-950">
+                  <input type="checkbox" id="ann-target-extra" value="extra" checked class="w-4 h-4 accent-blue-600 rounded shrink-0">
                   <span>エキストラ</span>
                 </label>
-                <label class="flex items-center justify-center gap-1.5 p-2.5 rounded-xl border border-slate-300 bg-slate-100 cursor-pointer select-none text-xs font-bold text-slate-700">
-                  <input type="checkbox" id="ann-target-inactive" value="inactive" class="w-4 h-4 accent-slate-600 rounded">
+                <label class="flex items-center justify-center gap-1 sm:gap-1.5 p-2 sm:p-2.5 rounded-xl border border-slate-300 bg-slate-100 cursor-pointer select-none text-[11px] sm:text-xs font-bold text-slate-700">
+                  <input type="checkbox" id="ann-target-inactive" value="inactive" class="w-4 h-4 accent-slate-600 rounded shrink-0">
                   <span>休団中</span>
                 </label>
               </div>
@@ -793,21 +807,21 @@
 
             <!-- Expiration Date (Required Calendar) & Author (Optional) -->
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
+              <div class="min-w-0">
                 <label for="ann-expire-input" class="block text-xs font-bold text-slate-700 mb-1">
                   掲載期限（いつまで掲載するか）<span class="ml-1 px-1.5 py-0.2 rounded bg-rose-600 text-white text-[10px]">必須</span>
                 </label>
                 <input type="date" id="ann-expire-input" required
-                  class="w-full p-2.5 rounded-xl border border-slate-300 bg-white text-sm font-medium focus:border-emerald-600 focus:outline-none">
+                  class="w-full min-w-0 p-2.5 rounded-xl border border-slate-300 bg-white text-sm font-medium focus:border-emerald-600 focus:outline-none">
                 <p class="text-[10px] text-slate-500 mt-0.5">※指定した日の翌日になると自動削除されます</p>
               </div>
 
-              <div>
+              <div class="min-w-0">
                 <label for="ann-author-input" class="block text-xs font-bold text-slate-700 mb-1">
                   発信者（誰が出したか・任意）
                 </label>
                 <input type="text" id="ann-author-input" placeholder="例：運営委員、〇〇パートリーダー"
-                  class="w-full p-2.5 rounded-xl border border-slate-300 bg-white text-sm focus:border-emerald-600 focus:outline-none">
+                  class="w-full min-w-0 p-2.5 rounded-xl border border-slate-300 bg-white text-sm focus:border-emerald-600 focus:outline-none">
               </div>
             </div>
 
@@ -844,7 +858,7 @@
 
   <!-- Toast Notification Banner -->
   <div id="toast-banner" class="hidden fixed bottom-5 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-full shadow-lg text-xs sm:text-sm font-bold text-white bg-slate-900/95 flex items-center gap-2 max-w-[92vw]">
-    <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400"></i>
+    <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400 shrink-0"></i>
     <span id="toast-message" class="truncate">保存しました</span>
   </div>
 
@@ -1086,9 +1100,9 @@
 
         msgEl.textContent = message;
         if (type === 'error') {
-          iconEl.className = 'fa-solid fa-circle-exclamation text-rose-400';
+          iconEl.className = 'fa-solid fa-circle-exclamation text-rose-400 shrink-0';
         } else {
-          iconEl.className = 'fa-solid fa-circle-check text-emerald-400';
+          iconEl.className = 'fa-solid fa-circle-check text-emerald-400 shrink-0';
         }
 
         banner.classList.remove('hidden', 'toast-enter');
@@ -1151,19 +1165,19 @@
 
         if (!badge) return;
         if (unreadCount > 0) {
-          badge.className = 'inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-500/30 hover:bg-rose-500/40 text-rose-100 border border-rose-400/50 transition cursor-pointer';
+          badge.className = 'inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-500/30 hover:bg-rose-500/40 text-rose-100 border border-rose-400/50 transition cursor-pointer max-w-full truncate';
           badge.textContent = '📢 未読のお知らせが' + unreadCount + '件あります';
           return;
         }
 
         if (state.connectionStatus === 'connected') {
-          badge.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/25 hover:bg-emerald-500/35 text-emerald-200 border border-emerald-400/40 transition cursor-pointer';
+          badge.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/25 hover:bg-emerald-500/35 text-emerald-200 border border-emerald-400/40 transition cursor-pointer max-w-full truncate';
           badge.textContent = '🟢 リアルタイム同期中';
         } else if (state.connectionStatus === 'error') {
-          badge.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-500/25 text-rose-200 border border-rose-400/40 transition cursor-pointer';
+          badge.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-500/25 text-rose-200 border border-rose-400/40 transition cursor-pointer max-w-full truncate';
           badge.textContent = '🔴 接続エラー';
         } else {
-          badge.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/20 text-amber-200 border border-amber-400/30 transition cursor-pointer';
+          badge.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/20 text-amber-200 border border-amber-400/30 transition cursor-pointer max-w-full truncate';
           badge.textContent = '🟡 接続中...';
         }
       }
@@ -1430,10 +1444,10 @@
           if (!viewEl || !btnEl) return;
           if (t === tabName) {
             viewEl.classList.remove('hidden');
-            btnEl.className = 'tab-btn py-2 px-2 rounded-lg text-xs sm:text-sm font-bold transition flex items-center justify-center gap-1.5 bg-white text-emerald-900 shadow-xs';
+            btnEl.className = 'tab-btn py-2 px-1.5 sm:px-2 rounded-lg text-xs sm:text-sm font-bold transition flex items-center justify-center gap-1 sm:gap-1.5 bg-white text-emerald-900 shadow-xs min-w-0';
           } else {
             viewEl.classList.add('hidden');
-            btnEl.className = 'tab-btn py-2 px-2 rounded-lg text-xs sm:text-sm font-bold transition flex items-center justify-center gap-1.5 text-emerald-100 hover:bg-emerald-800/70';
+            btnEl.className = 'tab-btn py-2 px-1.5 sm:px-2 rounded-lg text-xs sm:text-sm font-bold transition flex items-center justify-center gap-1 sm:gap-1.5 text-emerald-100 hover:bg-emerald-800/70 min-w-0';
           }
         });
         renderAllViews();
@@ -1829,7 +1843,7 @@
                       '<i class="fa-regular fa-calendar-check mr-1"></i>掲載期限: ' + expInfo.shortLabel + 'まで' +
                     '</span>' +
                   '</div>' +
-                  '<h4 class="font-bold text-base text-slate-900 leading-snug">' + escapeHtml(ann.title) + '</h4>' +
+                  '<h4 class="font-bold text-base text-slate-900 leading-snug break-words">' + escapeHtml(ann.title) + '</h4>' +
                 '</div>' +
                 '<button type="button" onclick="window.confirmDeleteAnnouncement(\'' + escapeHtml(ann.id) + '\')" title="削除" ' +
                   'class="px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-[11px] shrink-0 transition">' +
@@ -1837,7 +1851,7 @@
                 '</button>' +
               '</div>' +
 
-              '<div class="text-xs sm:text-sm text-slate-700 leading-relaxed whitespace-pre-wrap bg-slate-50/80 p-3 rounded-xl border border-slate-100">' +
+              '<div class="text-xs sm:text-sm text-slate-700 leading-relaxed whitespace-pre-wrap break-words bg-slate-50/80 p-3 rounded-xl border border-slate-100">' +
                 escapeHtml(ann.body) +
               '</div>' +
 
@@ -1853,7 +1867,7 @@
                   '<span>' + readBtnLabel + '</span>' +
                 '</button>' +
 
-                '<div class="flex items-center gap-2">' +
+                '<div class="flex flex-wrap items-center gap-2">' +
                   '<button type="button" onclick="window.toggleAnnouncementReadersPanel(\'' + escapeHtml(ann.id) + '\')" ' +
                     'class="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1 transition">' +
                     '<i class="fa-solid fa-users-viewfinder text-emerald-700"></i>' +
@@ -1873,11 +1887,11 @@
                 ? '<div class="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-2 text-xs">' +
                     '<div>' +
                       '<div class="font-bold text-emerald-800 mb-0.5">✅ 確認済み（' + readMembersList.length + '名）</div>' +
-                      '<div class="text-slate-700 leading-relaxed">' + (readMembersList.length > 0 ? escapeHtml(readMembersList.join('、')) : '<span class="text-slate-400">まだいません</span>') + '</div>' +
+                      '<div class="text-slate-700 leading-relaxed break-words">' + (readMembersList.length > 0 ? escapeHtml(readMembersList.join('、')) : '<span class="text-slate-400">まだいません</span>') + '</div>' +
                     '</div>' +
                     '<div class="pt-1.5 border-t border-slate-200">' +
                       '<div class="font-bold text-rose-700 mb-0.5">⏳ 未確認の対象メンバー（' + unreadMembersList.length + '名）</div>' +
-                      '<div class="text-slate-600 leading-relaxed">' + (unreadMembersList.length > 0 ? escapeHtml(unreadMembersList.join('、')) : '<span class="text-emerald-700 font-bold">全員確認済みです！</span>') + '</div>' +
+                      '<div class="text-slate-600 leading-relaxed break-words">' + (unreadMembersList.length > 0 ? escapeHtml(unreadMembersList.join('、')) : '<span class="text-emerald-700 font-bold">全員確認済みです！</span>') + '</div>' +
                     '</div>' +
                   '</div>'
                 : '') +
@@ -1980,7 +1994,7 @@
             : '';
 
           memberHeaderCells +=
-            '<th class="' + bgClass + ' ' + borderRightClass + ' px-1.5 py-2 text-center font-bold min-w-[68px] max-w-[88px] border-b-2 border-b-slate-300 align-bottom">' +
+            '<th class="' + bgClass + ' ' + borderRightClass + ' px-1.5 py-2 text-center font-bold min-w-[64px] sm:min-w-[68px] max-w-[88px] border-b-2 border-b-slate-300 align-bottom">' +
               '<div class="flex flex-col items-center justify-end leading-tight">' +
                 '<span class="text-[11px] break-words line-clamp-2">' + escapeHtml(m.name) + '</span>' +
                 exBadge +
@@ -1990,7 +2004,7 @@
 
         thead.innerHTML =
           '<tr>' +
-            '<th rowspan="2" class="sticky left-0 z-30 bg-slate-800 text-white px-3 py-2 text-left font-bold min-w-[155px] sm:min-w-[190px] border-b-2 border-b-slate-400 border-r border-r-slate-600 sticky-col-shadow">' +
+            '<th rowspan="2" class="sticky left-0 z-30 bg-slate-800 text-white px-2.5 sm:px-3 py-2 text-left font-bold min-w-[128px] max-w-[144px] sm:min-w-[190px] sm:max-w-none border-b-2 border-b-slate-400 border-r border-r-slate-600 sticky-col-shadow">' +
               '<div class="text-xs">日程 / 時間・場所</div>' +
               '<div class="text-[10px] font-normal text-slate-300 mt-0.5">タップでパート別集計</div>' +
             '</th>' +
@@ -2037,13 +2051,13 @@
 
           let rowCellsHtml =
             '<td onclick="window.openSummaryModal(\'' + escapeHtml(sched.id) + '\')" ' +
-              'class="sticky left-0 z-20 ' + rowStickyBg + ' px-2.5 py-2 border-r border-r-slate-300 sticky-col-shadow cursor-pointer transition select-none align-top">' +
+              'class="sticky left-0 z-20 ' + rowStickyBg + ' px-2 sm:px-2.5 py-2 min-w-[128px] max-w-[144px] sm:min-w-[190px] sm:max-w-none border-r border-r-slate-300 sticky-col-shadow cursor-pointer transition select-none align-top">' +
               '<div class="flex items-center justify-between gap-1">' +
                 '<span class="font-bold text-xs sm:text-[13px] ' + dateColorClass + '">' + dInfo.shortLabel + '</span>' +
                 typeBadge +
               '</div>' +
-              (timeSummary ? '<div class="text-[10px] font-bold text-slate-700 mt-0.5 leading-snug">' + escapeHtml(timeSummary) + '</div>' : '') +
-              (subText ? '<div class="text-[10px] text-slate-500 truncate max-w-[165px] mt-0.5">' + escapeHtml(subText) + '</div>' : '') +
+              (timeSummary ? '<div class="text-[10px] font-bold text-slate-700 mt-0.5 leading-snug break-words">' + escapeHtml(timeSummary) + '</div>' : '') +
+              (subText ? '<div class="text-[10px] text-slate-500 truncate max-w-[122px] sm:max-w-[165px] mt-0.5">' + escapeHtml(subText) + '</div>' : '') +
               '<div class="mt-1 flex items-center gap-1.5 text-[10px] font-bold">' +
                 '<span class="text-emerald-700">○' + presentCnt + '</span>' +
                 '<span class="text-amber-600">△' + maybeCnt + '</span>' +
@@ -2077,11 +2091,11 @@
             }
 
             const transportBadge = (isPerf && transport && st !== '×')
-              ? '<div class="mt-0.5 px-1 py-0.2 rounded bg-amber-100 border border-amber-300 text-amber-950 text-[9px] font-bold leading-tight max-w-[78px] truncate" title="' + escapeHtml(transport) + '">' + escapeHtml(transport) + '</div>'
+              ? '<div class="mt-0.5 px-1 py-0.2 rounded bg-amber-100 border border-amber-300 text-amber-950 text-[9px] font-bold leading-tight max-w-[74px] sm:max-w-[78px] truncate" title="' + escapeHtml(transport) + '">' + escapeHtml(transport) + '</div>'
               : '';
 
             const noteBadge = note
-              ? '<div class="mt-0.5 text-[9px] text-slate-600 leading-tight max-w-[76px] truncate" title="' + escapeHtml(note) + '">' + escapeHtml(note) + '</div>'
+              ? '<div class="mt-0.5 text-[9px] text-slate-600 leading-tight max-w-[72px] sm:max-w-[76px] truncate" title="' + escapeHtml(note) + '">' + escapeHtml(note) + '</div>'
               : '';
 
             rowCellsHtml +=
@@ -2412,7 +2426,7 @@
               '<div class="flex items-center gap-1.5">' +
                 '<input type="text" id="bulk-note-' + escapeHtml(sched.id) + '" value="' + escapeHtml(rec.note) + '" placeholder="連絡メモ（任意）"' +
                   ' onblur="window.saveBulkItemNote(\'' + escapeHtml(sched.id) + '\', this.value)"' +
-                  ' class="flex-1 p-2 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white text-xs focus:border-emerald-600 focus:outline-none">' +
+                  ' class="flex-1 min-w-0 p-2 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white text-xs focus:border-emerald-600 focus:outline-none">' +
               '</div>' +
             '</div>';
         });
@@ -2941,7 +2955,7 @@
             );
 
           html +=
-            '<div class="p-3.5 sm:p-4 rounded-2xl border ' + (isPerf ? 'border-amber-300 bg-amber-50/40' : 'border-slate-200 bg-slate-50/70') + ' space-y-3.5">' +
+            '<div class="p-3 sm:p-4 rounded-2xl border ' + (isPerf ? 'border-amber-300 bg-amber-50/40' : 'border-slate-200 bg-slate-50/70') + ' space-y-3.5 w-full max-w-full min-w-0">' +
               '<div class="flex flex-wrap items-center justify-between gap-2 pb-2 border-b ' + (isPerf ? 'border-amber-200/80' : 'border-slate-200/80') + '">' +
                 '<div class="flex items-center gap-2">' +
                   '<span class="w-5 h-5 rounded-full ' + (isPerf ? 'bg-amber-600' : 'bg-emerald-700') + ' text-white text-[11px] font-bold flex items-center justify-center shrink-0">' + (idx + 1) + '</span>' +
@@ -3114,14 +3128,14 @@
           const timeSummary = formatScheduleTimeSummary(sched);
 
           html +=
-            '<div class="p-3.5 rounded-2xl border ' + (isPerf ? 'border-amber-200 bg-amber-50/30' : 'border-slate-200 bg-slate-50/50') + ' flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">' +
+            '<div class="p-3.5 rounded-2xl border ' + (isPerf ? 'border-amber-200 bg-amber-50/30' : 'border-slate-200 bg-slate-50/50') + ' flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 min-w-0">' +
               '<div class="min-w-0 space-y-0.5">' +
                 '<div class="flex items-center gap-2 flex-wrap">' +
                   badge +
                   '<span class="font-bold text-sm ' + dateColor + '">' + dInfo.fullLabel + '</span>' +
                   (timeSummary ? '<span class="text-xs font-bold text-slate-700">' + escapeHtml(timeSummary) + '</span>' : '') +
                 '</div>' +
-                '<div class="text-xs font-bold text-slate-800">' +
+                '<div class="text-xs font-bold text-slate-800 break-words">' +
                   escapeHtml([sched.location, sched.eventName].filter(Boolean).join(' ／ ') || '詳細未設定') +
                 '</div>' +
                 (sched.repertoire ? '<div class="text-[11px] text-slate-500 truncate">曲目・詳細：' + escapeHtml(sched.repertoire) + '</div>' : '') +
@@ -3445,19 +3459,19 @@
           const memberRows = pMembers.length === 0
             ? '<div class="text-xs text-slate-400 py-1.5 px-2">登録なし</div>'
             : pMembers.map(function (m) {
-                let statusBadge = '<span class="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-bold text-[11px]">実働団員</span>';
+                let statusBadge = '<span class="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-bold text-[11px] shrink-0">実働団員</span>';
                 if (m.status === 'extra') {
-                  statusBadge = '<span class="px-2 py-0.5 rounded-md bg-blue-600 text-white font-bold text-[11px]">エキストラ</span>';
+                  statusBadge = '<span class="px-2 py-0.5 rounded-md bg-blue-600 text-white font-bold text-[11px] shrink-0">エキストラ</span>';
                 } else if (m.status === 'inactive') {
-                  statusBadge = '<span class="px-2 py-0.5 rounded-md bg-slate-200 text-slate-600 font-bold text-[11px]">休団中</span>';
+                  statusBadge = '<span class="px-2 py-0.5 rounded-md bg-slate-200 text-slate-600 font-bold text-[11px] shrink-0">休団中</span>';
                 }
 
                 const orderTag = (m.order !== undefined && m.order !== 999)
-                  ? '<span class="text-[10px] text-slate-400 font-bold">#' + m.order + '</span>'
+                  ? '<span class="text-[10px] text-slate-400 font-bold shrink-0">#' + m.order + '</span>'
                   : '';
 
                 return (
-                  '<div class="flex items-center justify-between gap-2 py-2 px-2.5 rounded-xl bg-white border border-slate-200">' +
+                  '<div class="flex items-center justify-between gap-2 py-2 px-2.5 rounded-xl bg-white border border-slate-200 min-w-0">' +
                     '<div class="flex items-center gap-2 min-w-0">' +
                       orderTag +
                       '<span class="font-bold text-sm text-slate-800 truncate">' + escapeHtml(m.name) + '</span>' +
@@ -3472,7 +3486,7 @@
               }).join('');
 
           html +=
-            '<div class="p-3 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">' +
+            '<div class="p-3 rounded-2xl bg-slate-50 border border-slate-200 space-y-2 min-w-0">' +
               '<div class="flex items-center justify-between">' +
                 '<span class="font-bold text-xs sm:text-sm text-emerald-950">' + escapeHtml(part) + '</span>' +
                 '<span class="text-xs font-bold text-slate-500">' + pMembers.length + '名</span>' +
