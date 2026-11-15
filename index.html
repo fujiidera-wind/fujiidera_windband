@@ -58,17 +58,26 @@
   <header class="bg-emerald-900 text-white shadow-md sticky top-0 z-40">
     <div class="max-w-7xl mx-auto px-3 sm:px-6 pt-3 pb-2">
       <div class="flex flex-wrap items-center justify-between gap-2">
-        <!-- Brand Title & Real-Time Connection Status -->
-        <div class="flex items-center gap-2.5 min-w-0">
-          <div class="w-9 h-9 rounded-xl bg-emerald-700/80 border border-emerald-500/50 flex items-center justify-center shrink-0 shadow-inner">
-            <i class="fa-solid fa-music text-amber-300 text-base"></i>
-          </div>
+        <!-- Brand Title, Music Note Announcement Button & Status -->
+        <div class="flex items-center gap-2.5 sm:gap-3 min-w-0">
+          <button type="button" id="header-music-note-btn" onclick="window.openAnnouncementsModal()"
+            title="お知らせ一覧を表示・作成"
+            aria-label="お知らせ一覧を表示・作成"
+            class="relative px-2.5 py-1.5 rounded-xl bg-emerald-700/95 hover:bg-emerald-600 active:bg-emerald-950 border border-emerald-400/60 flex flex-col items-center justify-center shrink-0 shadow-xs transition cursor-pointer">
+            <i class="fa-solid fa-music text-amber-300 text-sm sm:text-base leading-none"></i>
+            <span class="text-[9px] font-bold text-emerald-50 tracking-tighter leading-none mt-1">お知らせ</span>
+            <span id="announcement-badge-count"
+              class="hidden absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 rounded-full bg-rose-600 text-white text-[11px] font-bold flex items-center justify-center shadow-sm border-2 border-emerald-900 leading-none">
+              0
+            </span>
+          </button>
           <div class="min-w-0">
             <h1 class="text-base sm:text-lg font-bold tracking-tight truncate">藤井寺市民音楽団 出席・日程管理</h1>
             <div class="flex items-center gap-2 mt-0.5">
-              <span id="sync-status-badge" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/20 text-amber-200 border border-amber-400/30">
+              <button type="button" id="sync-status-badge" onclick="window.openAnnouncementsModal()"
+                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/20 text-amber-200 border border-amber-400/30 transition cursor-pointer">
                 🟡 接続中...
-              </span>
+              </button>
             </div>
           </div>
         </div>
@@ -640,7 +649,7 @@
       <div class="p-4 space-y-4">
         <div class="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 space-y-2">
           <h4 class="font-bold text-sm text-emerald-950">1. JSONバックアップをダウンロード</h4>
-          <p class="text-xs text-emerald-800">現在の団員名簿・日程・出欠データを端末に保存します。</p>
+          <p class="text-xs text-emerald-800">現在の団員名簿・日程・出欠・お知らせデータを端末に保存します。</p>
           <button type="button" onclick="window.downloadBackupJson()"
             class="w-full py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition">
             <i class="fa-solid fa-download"></i>
@@ -683,6 +692,143 @@
       </div>
     </div>
 
+    <!-- MODAL H: Announcements Modal (お知らせ一覧・新規作成・既読確認・LINE共有) -->
+    <div id="modal-announcements" class="hidden bg-white w-full sm:max-w-2xl rounded-t-3xl sm:rounded-2xl shadow-2xl border border-slate-200 overflow-hidden max-h-[92vh] flex flex-col">
+      <!-- Modal Header -->
+      <div class="px-4 py-3.5 bg-emerald-900 text-white flex items-center justify-between">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <div class="w-8 h-8 rounded-lg bg-emerald-700/90 border border-emerald-400/50 flex items-center justify-center shrink-0">
+            <i class="fa-solid fa-music text-amber-300 text-sm"></i>
+          </div>
+          <div class="min-w-0">
+            <h3 class="font-bold text-base flex items-center gap-2">
+              <span>団内お知らせ</span>
+              <span id="ann-modal-header-count" class="px-2 py-0.5 rounded-full bg-emerald-700 text-emerald-100 text-[11px] font-bold">0件</span>
+            </h3>
+            <p class="text-[11px] text-emerald-200 truncate">掲載期限を過ぎたお知らせは自動削除されます</p>
+          </div>
+        </div>
+        <button type="button" onclick="window.closeAllModals()" class="w-9 h-9 rounded-full bg-emerald-800 hover:bg-emerald-700 text-white flex items-center justify-center shrink-0">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Current Member Selector Bar for Read Receipts -->
+      <div class="px-4 py-2.5 bg-slate-100 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
+        <div class="flex items-center gap-2 flex-1 min-w-[200px]">
+          <label for="ann-modal-member-select" class="text-xs font-bold text-slate-700 whitespace-nowrap shrink-0">
+            <i class="fa-solid fa-user-check text-emerald-600 mr-1"></i>既読者：
+          </label>
+          <select id="ann-modal-member-select" onchange="window.handleMyMemberChange(this.value)"
+            class="flex-1 min-w-0 p-2 rounded-xl border border-slate-300 bg-white text-xs sm:text-sm font-bold text-slate-800 focus:border-emerald-600 focus:outline-none">
+            <option value="">-- 自分の名前を選択して既読確認 --</option>
+          </select>
+        </div>
+        <button type="button" id="toggle-ann-create-btn" onclick="window.toggleAnnouncementForm()"
+          class="px-3.5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs transition shrink-0">
+          <i class="fa-solid fa-plus"></i>
+          <span>新しいお知らせを作成</span>
+        </button>
+      </div>
+
+      <!-- Modal Scrollable Body -->
+      <div class="p-3.5 sm:p-4 overflow-y-auto space-y-4 flex-1 bg-slate-50">
+
+        <!-- Collapsible Create Announcement Form -->
+        <div id="ann-create-form-wrapper" class="hidden bg-white rounded-2xl p-4 border-2 border-emerald-600/40 shadow-xs space-y-3">
+          <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+            <h4 class="font-bold text-sm text-emerald-950 flex items-center gap-1.5">
+              <i class="fa-solid fa-bullhorn text-emerald-700"></i>
+              <span>新規お知らせの作成</span>
+            </h4>
+            <button type="button" onclick="window.toggleAnnouncementForm(false)" class="text-xs font-bold text-slate-500 hover:text-slate-800 px-2 py-1 rounded-lg bg-slate-100">
+              閉じる
+            </button>
+          </div>
+
+          <form onsubmit="window.submitNewAnnouncement(event)" class="space-y-3">
+            <!-- Title -->
+            <div>
+              <label for="ann-title-input" class="block text-xs font-bold text-slate-700 mb-1">タイトル（必須）</label>
+              <input type="text" id="ann-title-input" required placeholder="例：次回練習の合奏曲順・持ち物について"
+                class="w-full p-2.5 rounded-xl border border-slate-300 bg-white text-sm font-bold focus:border-emerald-600 focus:outline-none">
+            </div>
+
+            <!-- Content Body -->
+            <div>
+              <label for="ann-body-input" class="block text-xs font-bold text-slate-700 mb-1">お知らせ内容（必須）</label>
+              <textarea id="ann-body-input" rows="3" required placeholder="団員への連絡事項を入力してください"
+                class="w-full p-2.5 rounded-xl border border-slate-300 bg-white text-sm focus:border-emerald-600 focus:outline-none"></textarea>
+            </div>
+
+            <!-- Target Groups Checkboxes -->
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1.5">お知らせ対象（複数選択可・1つ以上必須）</label>
+              <div class="grid grid-cols-3 gap-2">
+                <label class="flex items-center justify-center gap-1.5 p-2.5 rounded-xl border border-emerald-300 bg-emerald-50/70 cursor-pointer select-none text-xs font-bold text-emerald-950">
+                  <input type="checkbox" id="ann-target-active" value="active" checked class="w-4 h-4 accent-emerald-700 rounded">
+                  <span>実働団員</span>
+                </label>
+                <label class="flex items-center justify-center gap-1.5 p-2.5 rounded-xl border border-blue-300 bg-blue-50/70 cursor-pointer select-none text-xs font-bold text-blue-950">
+                  <input type="checkbox" id="ann-target-extra" value="extra" checked class="w-4 h-4 accent-blue-600 rounded">
+                  <span>エキストラ</span>
+                </label>
+                <label class="flex items-center justify-center gap-1.5 p-2.5 rounded-xl border border-slate-300 bg-slate-100 cursor-pointer select-none text-xs font-bold text-slate-700">
+                  <input type="checkbox" id="ann-target-inactive" value="inactive" class="w-4 h-4 accent-slate-600 rounded">
+                  <span>休団中</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Expiration Date (Required Calendar) & Author (Optional) -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label for="ann-expire-input" class="block text-xs font-bold text-slate-700 mb-1">
+                  掲載期限（いつまで掲載するか）<span class="ml-1 px-1.5 py-0.2 rounded bg-rose-600 text-white text-[10px]">必須</span>
+                </label>
+                <input type="date" id="ann-expire-input" required
+                  class="w-full p-2.5 rounded-xl border border-slate-300 bg-white text-sm font-medium focus:border-emerald-600 focus:outline-none">
+                <p class="text-[10px] text-slate-500 mt-0.5">※指定した日の翌日になると自動削除されます</p>
+              </div>
+
+              <div>
+                <label for="ann-author-input" class="block text-xs font-bold text-slate-700 mb-1">
+                  発信者（誰が出したか・任意）
+                </label>
+                <input type="text" id="ann-author-input" placeholder="例：運営委員、〇〇パートリーダー"
+                  class="w-full p-2.5 rounded-xl border border-slate-300 bg-white text-sm focus:border-emerald-600 focus:outline-none">
+              </div>
+            </div>
+
+            <div class="pt-1 flex justify-end gap-2">
+              <button type="button" onclick="window.toggleAnnouncementForm(false)"
+                class="px-4 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-700 font-bold text-xs sm:text-sm hover:bg-slate-100 transition">
+                キャンセル
+              </button>
+              <button type="submit"
+                class="px-5 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs sm:text-sm shadow-xs flex items-center gap-1.5 transition">
+                <i class="fa-solid fa-paper-plane"></i>
+                <span>お知らせを掲載する</span>
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Announcements List Container -->
+        <div id="announcements-list-container" class="space-y-3">
+          <!-- Populated dynamically by JS -->
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="px-4 py-3 bg-white border-t border-slate-200">
+        <button type="button" onclick="window.closeAllModals()"
+          class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-sm transition">
+          閉じる
+        </button>
+      </div>
+    </div>
+
   </div>
 
   <!-- Toast Notification Banner -->
@@ -691,7 +837,7 @@
     <span id="toast-message" class="truncate">保存しました</span>
   </div>
 
-  <!-- ==================== 4. APPLICATION SCRIPT (STANDARD SCRIPT + DYNAMIC FIREBASE IMPORT) ==================== -->
+  <!-- ==================== 4. APPLICATION SCRIPT ==================== -->
   <script>
     (function () {
       /* ==================== Firebase Configuration (Production) ==================== */
@@ -706,6 +852,7 @@
       };
 
       const DB_ROOT = "fujiidera_wind_data";
+      const STORAGE_MY_MEMBER_KEY = "fujiidera_wind_my_member_id";
       let db = null;
       let fbRef = null;
       let fbOnValue = null;
@@ -714,7 +861,6 @@
       let fbRemove = null;
 
       /* ==================== Constants ==================== */
-      /* Exact 14 Music Parts ('Fagot' normalized to 'Bassoon') */
       const PARTS = [
         '指揮者',
         'Flute/Piccolo',
@@ -732,7 +878,6 @@
         'Percussion'
       ];
 
-      /* 6 Mandatory Transportation Options for Performances (本番) */
       const CONCERT_TRANSPORT_OPTIONS = [
         '会館集合(同乗可)',
         '会館集合(楽器車)',
@@ -742,16 +887,39 @@
         '現地集合(電車等)'
       ];
 
-      const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
+      const TARGET_GROUP_LABELS = {
+        active: '実働団員',
+        extra: 'エキストラ',
+        inactive: '休団中'
+      };
 
-      /* Preset Practice Locations */
+      const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
       const PRACTICE_LOCATION_PRESETS = ['多目的室', '小ホール', '大ホール'];
 
-      /* Generate 5-minute increment times from 08:00 to 23:55 */
       const TIME_OPTIONS = [];
       for (let h = 8; h <= 23; h++) {
         for (let m = 0; m < 60; m += 5) {
           TIME_OPTIONS.push(String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0'));
+        }
+      }
+
+      function loadSavedMyMemberId() {
+        try {
+          return window.localStorage.getItem(STORAGE_MY_MEMBER_KEY) || '';
+        } catch (e) {
+          return '';
+        }
+      }
+
+      function persistMyMemberId(memberId) {
+        try {
+          if (memberId) {
+            window.localStorage.setItem(STORAGE_MY_MEMBER_KEY, memberId);
+          } else {
+            window.localStorage.removeItem(STORAGE_MY_MEMBER_KEY);
+          }
+        } catch (e) {
+          // Ignore storage restrictions
         }
       }
 
@@ -761,17 +929,22 @@
         members: {},
         schedules: {},
         attendance: {},
+        announcements: {},
+        connectionStatus: 'connecting',
         activeTab: 'matrix',
         matrixTypeFilter: 'all',
-        selectedMyMemberId: '',
+        selectedMyMemberId: loadSavedMyMemberId(),
         cellModalTarget: { scheduleId: '', memberId: '', status: '', transport: '' },
         batchPendingStatus: {},
         summaryScheduleId: '',
+        expandedAnnouncementReaders: {},
         batchCards: [],
         confirmCallback: null,
         toastTimer: null,
         autoDeleteInProgress: false,
-        autoDeletedScheduleKeys: {}
+        autoDeletedScheduleKeys: {},
+        autoDeleteAnnInProgress: false,
+        autoDeletedAnnKeys: {}
       };
 
       /* ==================== General Utilities ==================== */
@@ -821,6 +994,13 @@
       function isPastSchedule(sched, todayStr) {
         if (!sched || !sched.date) return false;
         const dateVal = String(sched.date).trim();
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(dateVal)) return false;
+        return dateVal < todayStr;
+      }
+
+      function isExpiredAnnouncement(ann, todayStr) {
+        if (!ann || !ann.expireDate) return false;
+        const dateVal = String(ann.expireDate).trim();
         if (!/^\d{4}-\d{2}-\d{2}$/.test(dateVal)) return false;
         return dateVal < todayStr;
       }
@@ -909,19 +1089,77 @@
         }, 3200);
       }
 
-      function updateSyncBadge(status) {
+      /* ==================== Header Music Note Badge & Status Sync ==================== */
+      function getActiveAnnouncements() {
+        const todayStr = getTodayString();
+        return Object.values(state.announcements)
+          .filter(function (ann) { return !isExpiredAnnouncement(ann, todayStr); })
+          .sort(function (a, b) { return (b.createdAt || 0) - (a.createdAt || 0); });
+      }
+
+      function getUnreadAnnouncementsCount() {
+        const activeAnns = getActiveAnnouncements();
+        if (activeAnns.length === 0) return 0;
+
+        const myId = state.selectedMyMemberId;
+        const me = myId ? state.members[myId] : null;
+        if (!me) {
+          // 名前未選択時は掲載中のお知らせ件数を未読として通知（既読登録すると消える）
+          return activeAnns.length;
+        }
+
+        return activeAnns.filter(function (ann) {
+          const targets = ann.targets || [];
+          const isTargetForMe = targets.indexOf(me.status) !== -1;
+          if (!isTargetForMe) return false;
+          const isRead = Boolean(ann.readBy && ann.readBy[myId]);
+          return !isRead;
+        }).length;
+      }
+
+      function updateHeaderAnnouncementAndSyncUI() {
         const badge = document.getElementById('sync-status-badge');
+        const noteCountBadge = document.getElementById('announcement-badge-count');
+        const modalHeaderCount = document.getElementById('ann-modal-header-count');
+        const activeAnns = getActiveAnnouncements();
+        const totalCount = activeAnns.length;
+        const unreadCount = getUnreadAnnouncementsCount();
+
+        if (noteCountBadge) {
+          if (unreadCount > 0) {
+            noteCountBadge.textContent = String(unreadCount);
+            noteCountBadge.classList.remove('hidden');
+          } else {
+            noteCountBadge.classList.add('hidden');
+          }
+        }
+
+        if (modalHeaderCount) {
+          modalHeaderCount.textContent = totalCount + '件';
+        }
+
         if (!badge) return;
-        if (status === 'connected') {
-          badge.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/25 text-emerald-200 border border-emerald-400/40';
+        if (unreadCount > 0) {
+          badge.className = 'inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-500/30 hover:bg-rose-500/40 text-rose-100 border border-rose-400/50 transition cursor-pointer';
+          badge.textContent = '📢 未読のお知らせが' + unreadCount + '件あります';
+          return;
+        }
+
+        if (state.connectionStatus === 'connected') {
+          badge.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/25 hover:bg-emerald-500/35 text-emerald-200 border border-emerald-400/40 transition cursor-pointer';
           badge.textContent = '🟢 リアルタイム同期中';
-        } else if (status === 'error') {
-          badge.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-500/25 text-rose-200 border border-rose-400/40';
+        } else if (state.connectionStatus === 'error') {
+          badge.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-500/25 text-rose-200 border border-rose-400/40 transition cursor-pointer';
           badge.textContent = '🔴 接続エラー';
         } else {
-          badge.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/20 text-amber-200 border border-amber-400/30';
+          badge.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/20 text-amber-200 border border-amber-400/30 transition cursor-pointer';
           badge.textContent = '🟡 接続中...';
         }
+      }
+
+      function updateSyncBadge(status) {
+        state.connectionStatus = status;
+        updateHeaderAnnouncementAndSyncUI();
       }
 
       /* ==================== Data Normalization (Read-Only Safe) ==================== */
@@ -1020,6 +1258,35 @@
         return result;
       }
 
+      function normalizeAnnouncements(raw) {
+        const result = {};
+        if (!raw || typeof raw !== 'object') return result;
+        Object.keys(raw).forEach(function (key) {
+          const item = raw[key];
+          if (!item || typeof item !== 'object') return;
+          const id = String(item.id || key);
+          let targets = ['active', 'extra'];
+          if (Array.isArray(item.targets)) {
+            targets = item.targets.filter(function (t) { return ['active', 'extra', 'inactive'].indexOf(t) !== -1; });
+          } else if (item.targets && typeof item.targets === 'object') {
+            targets = Object.keys(item.targets).filter(function (k) { return item.targets[k] && ['active', 'extra', 'inactive'].indexOf(k) !== -1; });
+          }
+          const readBy = (item.readBy && typeof item.readBy === 'object') ? item.readBy : {};
+          result[id] = {
+            _dbKey: key,
+            id: id,
+            title: String(item.title || 'お知らせ'),
+            body: String(item.body || ''),
+            targets: targets,
+            expireDate: String(item.expireDate || ''),
+            author: String(item.author || ''),
+            createdAt: typeof item.createdAt === 'number' ? item.createdAt : 0,
+            readBy: readBy
+          };
+        });
+        return result;
+      }
+
       function getAttendanceRecord(scheduleId, memberId) {
         if (state.attendance[scheduleId] && state.attendance[scheduleId][memberId]) {
           return state.attendance[scheduleId][memberId];
@@ -1027,7 +1294,7 @@
         return { status: '', transport: '', note: '' };
       }
 
-      /* ==================== Auto-Delete Finished Past Schedules ==================== */
+      /* ==================== Auto-Delete Finished Past Schedules & Expired Announcements ==================== */
       async function autoCleanupExpiredSchedules(rawAttendance) {
         if (!db || !fbUpdate || state.autoDeleteInProgress) return;
         const todayStr = getTodayString();
@@ -1065,6 +1332,35 @@
         }
       }
 
+      async function autoCleanupExpiredAnnouncements() {
+        if (!db || !fbUpdate || state.autoDeleteAnnInProgress) return;
+        const todayStr = getTodayString();
+        const expired = Object.values(state.announcements).filter(function (ann) {
+          return isExpiredAnnouncement(ann, todayStr) && !state.autoDeletedAnnKeys[ann._dbKey];
+        });
+
+        if (expired.length === 0) return;
+
+        state.autoDeleteAnnInProgress = true;
+        const updates = {};
+        expired.forEach(function (ann) {
+          state.autoDeletedAnnKeys[ann._dbKey] = true;
+          updates[DB_ROOT + '/announcements/' + ann._dbKey] = null;
+        });
+
+        try {
+          await fbUpdate(fbRef(db), updates);
+          showToast('掲載期限を過ぎたお知らせ ' + expired.length + '件を自動削除しました');
+        } catch (err) {
+          console.error('Auto-delete expired announcements error:', err);
+          expired.forEach(function (ann) {
+            delete state.autoDeletedAnnKeys[ann._dbKey];
+          });
+        } finally {
+          state.autoDeleteAnnInProgress = false;
+        }
+      }
+
       /* ==================== Firebase Initialization (Dynamic Import) ==================== */
       async function initFirebaseListeners() {
         try {
@@ -1090,10 +1386,17 @@
               state.members = normalizeMembers(data.members);
               state.schedules = normalizeSchedules(data.schedules);
               state.attendance = normalizeAttendance(data.attendance);
+              state.announcements = normalizeAnnouncements(data.announcements);
+
+              if (state.selectedMyMemberId && !state.members[state.selectedMyMemberId]) {
+                state.selectedMyMemberId = '';
+                persistMyMemberId('');
+              }
 
               updateSyncBadge('connected');
               renderAllViews();
               autoCleanupExpiredSchedules(data.attendance);
+              autoCleanupExpiredAnnouncements();
             },
             function (error) {
               console.error("Firebase read error:", error);
@@ -1128,11 +1431,15 @@
       function renderAllViews() {
         populateMemberDropdowns();
         renderRecentEventChips();
+        updateHeaderAnnouncementAndSyncUI();
         window.renderMatrix();
         window.renderSchedulesList();
         window.renderMembersList();
         if (state.summaryScheduleId && !document.getElementById('modal-summary').classList.contains('hidden')) {
           renderSummaryModalContent(state.summaryScheduleId);
+        }
+        if (!document.getElementById('modal-announcements').classList.contains('hidden')) {
+          renderAnnouncementsList();
         }
       }
 
@@ -1164,43 +1471,410 @@
       }
 
       function populateMemberDropdowns() {
-        const sorted = getVisibleSortedMembers('all');
-        const optionsHtml = ['<option value="">-- 自分の名前を選択して記憶 --</option>'];
-        sorted.forEach(function (m) {
+        const allSorted = Object.values(state.members).sort(function (a, b) {
+          const idxA = PARTS.indexOf(a.part);
+          const idxB = PARTS.indexOf(b.part);
+          const pA = idxA === -1 ? 999 : idxA;
+          const pB = idxB === -1 ? 999 : idxB;
+          if (pA !== pB) return pA - pB;
+          return (a.name || '').localeCompare(b.name || '', 'ja');
+        });
+
+        const visibleSorted = getVisibleSortedMembers('all');
+
+        const matrixOpts = ['<option value="">-- 自分の名前を選択して記憶 --</option>'];
+        visibleSorted.forEach(function (m) {
           const exTag = m.status === 'extra' ? ' [Ex]' : '';
-          optionsHtml.push(
+          matrixOpts.push(
             '<option value="' + escapeHtml(m.id) + '">' + escapeHtml(m.part) + '：' + escapeHtml(m.name) + exTag + '</option>'
           );
         });
-        const joined = optionsHtml.join('');
+
+        const annOpts = ['<option value="">-- 自分の名前を選択して既読確認 --</option>'];
+        allSorted.forEach(function (m) {
+          const statusTag = m.status === 'extra' ? ' [Ex]' : (m.status === 'inactive' ? ' [休団]' : '');
+          annOpts.push(
+            '<option value="' + escapeHtml(m.id) + '">' + escapeHtml(m.part) + '：' + escapeHtml(m.name) + statusTag + '</option>'
+          );
+        });
 
         const mainSel = document.getElementById('my-member-select');
         const modalSel = document.getElementById('bulk-modal-member-select');
+        const annSel = document.getElementById('ann-modal-member-select');
+
         if (mainSel) {
-          mainSel.innerHTML = joined;
+          mainSel.innerHTML = matrixOpts.join('');
           if (state.selectedMyMemberId && state.members[state.selectedMyMemberId]) {
             mainSel.value = state.selectedMyMemberId;
           }
         }
         if (modalSel) {
-          modalSel.innerHTML = joined;
+          modalSel.innerHTML = matrixOpts.join('');
           if (state.selectedMyMemberId && state.members[state.selectedMyMemberId]) {
             modalSel.value = state.selectedMyMemberId;
+          }
+        }
+        if (annSel) {
+          annSel.innerHTML = annOpts.join('');
+          if (state.selectedMyMemberId && state.members[state.selectedMyMemberId]) {
+            annSel.value = state.selectedMyMemberId;
           }
         }
       }
 
       window.handleMyMemberChange = function (memberId) {
         state.selectedMyMemberId = memberId || '';
+        persistMyMemberId(state.selectedMyMemberId);
+
         const mainSel = document.getElementById('my-member-select');
         const modalSel = document.getElementById('bulk-modal-member-select');
+        const annSel = document.getElementById('ann-modal-member-select');
         if (mainSel) mainSel.value = state.selectedMyMemberId;
         if (modalSel) modalSel.value = state.selectedMyMemberId;
+        if (annSel) annSel.value = state.selectedMyMemberId;
+
+        updateHeaderAnnouncementAndSyncUI();
 
         if (!document.getElementById('modal-bulk-input').classList.contains('hidden')) {
           window.renderBulkModalList();
         }
+        if (!document.getElementById('modal-announcements').classList.contains('hidden')) {
+          renderAnnouncementsList();
+        }
       };
+
+      /* ==================== ANNOUNCEMENTS MODAL & ACTIONS ==================== */
+      window.openAnnouncementsModal = function () {
+        populateMemberDropdowns();
+        const expireInput = document.getElementById('ann-expire-input');
+        if (expireInput) {
+          expireInput.min = getTodayString();
+        }
+        const activeAnns = getActiveAnnouncements();
+        if (activeAnns.length === 0) {
+          window.toggleAnnouncementForm(true);
+        } else {
+          window.toggleAnnouncementForm(false);
+        }
+        renderAnnouncementsList();
+        document.getElementById('modal-backdrop').classList.remove('hidden');
+        document.getElementById('modal-announcements').classList.remove('hidden');
+      };
+
+      window.toggleAnnouncementForm = function (forceState) {
+        const wrapper = document.getElementById('ann-create-form-wrapper');
+        const btn = document.getElementById('toggle-ann-create-btn');
+        if (!wrapper) return;
+        const willShow = typeof forceState === 'boolean' ? forceState : wrapper.classList.contains('hidden');
+        if (willShow) {
+          wrapper.classList.remove('hidden');
+          const expireInput = document.getElementById('ann-expire-input');
+          if (expireInput) expireInput.min = getTodayString();
+          if (btn) btn.classList.add('hidden');
+        } else {
+          wrapper.classList.add('hidden');
+          if (btn) btn.classList.remove('hidden');
+        }
+      };
+
+      window.submitNewAnnouncement = async function (event) {
+        event.preventDefault();
+        const title = document.getElementById('ann-title-input').value.trim();
+        const body = document.getElementById('ann-body-input').value.trim();
+        const expireDate = document.getElementById('ann-expire-input').value;
+        const author = document.getElementById('ann-author-input').value.trim();
+
+        const targets = [];
+        if (document.getElementById('ann-target-active').checked) targets.push('active');
+        if (document.getElementById('ann-target-extra').checked) targets.push('extra');
+        if (document.getElementById('ann-target-inactive').checked) targets.push('inactive');
+
+        if (!title || !body) {
+          showToast('タイトルとお知らせ内容を入力してください', 'error');
+          return;
+        }
+        if (targets.length === 0) {
+          showToast('お知らせ対象を1つ以上選択してください', 'error');
+          return;
+        }
+        if (!expireDate || !/^\d{4}-\d{2}-\d{2}$/.test(expireDate)) {
+          showToast('掲載期限（カレンダー）を入力してください', 'error');
+          return;
+        }
+        const todayStr = getTodayString();
+        if (expireDate < todayStr) {
+          showToast('掲載期限は本日以降の日付を選択してください', 'error');
+          return;
+        }
+
+        const id = 'ann_' + Date.now();
+        const payload = {
+          id: id,
+          title: title,
+          body: body,
+          targets: targets,
+          expireDate: expireDate,
+          author: author,
+          createdAt: Date.now(),
+          readBy: {}
+        };
+
+        try {
+          await fbSet(fbRef(db, DB_ROOT + '/announcements/' + id), payload);
+          document.getElementById('ann-title-input').value = '';
+          document.getElementById('ann-body-input').value = '';
+          document.getElementById('ann-expire-input').value = '';
+          document.getElementById('ann-author-input').value = '';
+          document.getElementById('ann-target-active').checked = true;
+          document.getElementById('ann-target-extra').checked = true;
+          document.getElementById('ann-target-inactive').checked = false;
+          window.toggleAnnouncementForm(false);
+          showToast('お知らせを掲載しました');
+        } catch (err) {
+          console.error(err);
+          showToast('お知らせの掲載に失敗しました', 'error');
+        }
+      };
+
+      window.toggleAnnouncementReadReceipt = async function (annId) {
+        const ann = state.announcements[annId];
+        if (!ann) return;
+
+        const mId = state.selectedMyMemberId;
+        const member = mId ? state.members[mId] : null;
+        if (!member) {
+          const sel = document.getElementById('ann-modal-member-select');
+          if (sel) sel.focus();
+          showToast('上の「既読者」欄で自分の名前を選択してください', 'error');
+          return;
+        }
+
+        const alreadyRead = Boolean(ann.readBy && ann.readBy[mId]);
+        const targetRef = fbRef(db, DB_ROOT + '/announcements/' + ann._dbKey + '/readBy/' + mId);
+
+        try {
+          if (alreadyRead) {
+            await fbRemove(targetRef);
+            showToast('既読を取り消しました');
+          } else {
+            await fbSet(targetRef, {
+              name: member.name,
+              part: member.part,
+              readAt: Date.now()
+            });
+            showToast('確認済み（既読）に登録しました');
+          }
+        } catch (err) {
+          console.error(err);
+          showToast('既読の更新に失敗しました', 'error');
+        }
+      };
+
+      window.toggleAnnouncementReadersPanel = function (annId) {
+        state.expandedAnnouncementReaders[annId] = !state.expandedAnnouncementReaders[annId];
+        renderAnnouncementsList();
+      };
+
+      window.shareAnnouncementToLine = async function (annId) {
+        const ann = state.announcements[annId];
+        if (!ann) return;
+
+        const targetNames = (ann.targets || []).map(function (t) { return TARGET_GROUP_LABELS[t] || t; }).join('・');
+        const expInfo = formatDateInfo(ann.expireDate);
+        const lines = [
+          '【藤井寺市民音楽団 お知らせ】',
+          '■ ' + ann.title,
+          ann.body,
+          '',
+          '対象：' + (targetNames || '全団員'),
+          '掲載期限：' + expInfo.fullLabel + 'まで'
+        ];
+        if (ann.author) {
+          lines.push('発信：' + ann.author);
+        }
+        lines.push('▼出欠表・確認はこちら');
+        lines.push(window.location.href);
+
+        const shareText = lines.join('\n');
+
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(shareText);
+          } else {
+            const ta = document.createElement('textarea');
+            ta.value = shareText;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+          }
+          showToast('お知らせ文をコピーしました（LINEを起動します）');
+        } catch (e) {
+          console.warn('Clipboard copy skipped:', e);
+        }
+
+        const lineShareUrl = 'https://line.me/R/share?text=' + encodeURIComponent(shareText);
+        window.open(lineShareUrl, '_blank', 'noopener,noreferrer');
+      };
+
+      window.confirmDeleteAnnouncement = function (annId) {
+        const ann = state.announcements[annId];
+        if (!ann) return;
+        openConfirmModal(
+          'お知らせを削除しますか？',
+          '「' + ann.title + '」を削除します。よろしいですか？',
+          '削除する',
+          async function () {
+            try {
+              await fbRemove(fbRef(db, DB_ROOT + '/announcements/' + ann._dbKey));
+              showToast('お知らせを削除しました');
+            } catch (err) {
+              console.error(err);
+              showToast('削除に失敗しました', 'error');
+            }
+          }
+        );
+      };
+
+      function renderAnnouncementsList() {
+        const container = document.getElementById('announcements-list-container');
+        if (!container) return;
+
+        const activeAnns = getActiveAnnouncements();
+        if (activeAnns.length === 0) {
+          container.innerHTML =
+            '<div class="bg-white rounded-2xl p-8 text-center border border-slate-200 space-y-2">' +
+              '<div class="text-slate-400 text-2xl"><i class="fa-regular fa-bell-slash"></i></div>' +
+              '<p class="text-sm font-bold text-slate-600">現在掲載中のお知らせはありません</p>' +
+              '<p class="text-xs text-slate-400">上のフォームから新しいお知らせを作成できます。</p>' +
+            '</div>';
+          return;
+        }
+
+        const myId = state.selectedMyMemberId;
+        const allMembers = Object.values(state.members);
+
+        let html = '';
+        if (!myId) {
+          html +=
+            '<div class="p-3 rounded-xl bg-amber-50 border border-amber-300 text-xs text-amber-950 font-bold flex items-center gap-2">' +
+              '<i class="fa-solid fa-circle-info text-amber-600 text-sm shrink-0"></i>' +
+              '<span>上の「既読者」で自分の名前を選んで「確認しました」を押すと、ヘッダーの未読バッジが消えます。</span>' +
+            '</div>';
+        }
+
+        activeAnns.forEach(function (ann) {
+          const expInfo = formatDateInfo(ann.expireDate);
+          const targets = ann.targets || [];
+          const targetBadgesHtml = targets.map(function (t) {
+            if (t === 'active') return '<span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold text-[10px]">実働団員</span>';
+            if (t === 'extra') return '<span class="px-2 py-0.5 rounded bg-blue-100 text-blue-800 font-bold text-[10px]">エキストラ</span>';
+            return '<span class="px-2 py-0.5 rounded bg-slate-200 text-slate-700 font-bold text-[10px]">休団中</span>';
+          }).join('');
+
+          const targetMembers = allMembers
+            .filter(function (m) { return targets.indexOf(m.status) !== -1; })
+            .sort(function (a, b) {
+              const pA = PARTS.indexOf(a.part);
+              const pB = PARTS.indexOf(b.part);
+              if (pA !== pB) return (pA === -1 ? 999 : pA) - (pB === -1 ? 999 : pB);
+              return (a.name || '').localeCompare(b.name || '', 'ja');
+            });
+
+          const readByMap = ann.readBy || {};
+          const readMembersList = [];
+          const unreadMembersList = [];
+
+          targetMembers.forEach(function (m) {
+            if (readByMap[m.id]) {
+              readMembersList.push(m.name + '(' + m.part + ')');
+            } else {
+              unreadMembersList.push(m.name + '(' + m.part + ')');
+            }
+          });
+
+          Object.keys(readByMap).forEach(function (rId) {
+            const existsInTarget = targetMembers.some(function (tm) { return tm.id === rId; });
+            if (!existsInTarget && readByMap[rId] && readByMap[rId].name) {
+              readMembersList.push(readByMap[rId].name + (readByMap[rId].part ? '(' + readByMap[rId].part + ')' : ''));
+            }
+          });
+
+          const isReadByMe = Boolean(myId && readByMap[myId]);
+          const readBtnClass = isReadByMe
+            ? 'px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs transition'
+            : 'px-3.5 py-2 rounded-xl bg-white hover:bg-emerald-50 border-2 border-emerald-600 text-emerald-800 font-bold text-xs flex items-center gap-1.5 transition';
+          const readBtnLabel = isReadByMe ? '✅ 確認済み（既読）' : '👍 確認しました（既読にする）';
+
+          const isExpanded = Boolean(state.expandedAnnouncementReaders[ann.id]);
+
+          html +=
+            '<article class="bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs space-y-3">' +
+              '<div class="flex items-start justify-between gap-2">' +
+                '<div class="space-y-1 min-w-0">' +
+                  '<div class="flex flex-wrap items-center gap-1.5">' +
+                    targetBadgesHtml +
+                    '<span class="px-2 py-0.5 rounded bg-amber-100 text-amber-900 font-bold text-[10px]">' +
+                      '<i class="fa-regular fa-calendar-check mr-1"></i>掲載期限: ' + expInfo.shortLabel + 'まで' +
+                    '</span>' +
+                  '</div>' +
+                  '<h4 class="font-bold text-base text-slate-900 leading-snug">' + escapeHtml(ann.title) + '</h4>' +
+                '</div>' +
+                '<button type="button" onclick="window.confirmDeleteAnnouncement(\'' + escapeHtml(ann.id) + '\')" title="削除" ' +
+                  'class="px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-[11px] shrink-0 transition">' +
+                  '<i class="fa-solid fa-trash-can mr-0.5"></i>削除' +
+                '</button>' +
+              '</div>' +
+
+              '<div class="text-xs sm:text-sm text-slate-700 leading-relaxed whitespace-pre-wrap bg-slate-50/80 p-3 rounded-xl border border-slate-100">' +
+                escapeHtml(ann.body) +
+              '</div>' +
+
+              (ann.author
+                ? '<div class="text-[11px] font-bold text-slate-500 flex items-center gap-1">' +
+                    '<i class="fa-solid fa-pen-nib text-emerald-700"></i>' +
+                    '<span>発信者：' + escapeHtml(ann.author) + '</span>' +
+                  '</div>'
+                : '') +
+
+              '<div class="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">' +
+                '<button type="button" onclick="window.toggleAnnouncementReadReceipt(\'' + escapeHtml(ann.id) + '\')" class="' + readBtnClass + '">' +
+                  '<span>' + readBtnLabel + '</span>' +
+                '</button>' +
+
+                '<div class="flex items-center gap-2">' +
+                  '<button type="button" onclick="window.toggleAnnouncementReadersPanel(\'' + escapeHtml(ann.id) + '\')" ' +
+                    'class="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1 transition">' +
+                    '<i class="fa-solid fa-users-viewfinder text-emerald-700"></i>' +
+                    '<span>既読 ' + readMembersList.length + '/' + targetMembers.length + '名</span>' +
+                    '<i class="fa-solid ' + (isExpanded ? 'fa-chevron-up' : 'fa-chevron-down') + ' text-[10px]"></i>' +
+                  '</button>' +
+
+                  '<button type="button" onclick="window.shareAnnouncementToLine(\'' + escapeHtml(ann.id) + '\')" ' +
+                    'class="px-3.5 py-2 rounded-xl bg-[#06C755] hover:bg-[#05b34c] text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs transition">' +
+                    '<i class="fa-brands fa-line text-sm"></i>' +
+                    '<span>LINE共有</span>' +
+                  '</button>' +
+                '</div>' +
+              '</div>' +
+
+              (isExpanded
+                ? '<div class="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-2 text-xs">' +
+                    '<div>' +
+                      '<div class="font-bold text-emerald-800 mb-0.5">✅ 確認済み（' + readMembersList.length + '名）</div>' +
+                      '<div class="text-slate-700 leading-relaxed">' + (readMembersList.length > 0 ? escapeHtml(readMembersList.join('、')) : '<span class="text-slate-400">まだいません</span>') + '</div>' +
+                    '</div>' +
+                    '<div class="pt-1.5 border-t border-slate-200">' +
+                      '<div class="font-bold text-rose-700 mb-0.5">⏳ 未確認の対象メンバー（' + unreadMembersList.length + '名）</div>' +
+                      '<div class="text-slate-600 leading-relaxed">' + (unreadMembersList.length > 0 ? escapeHtml(unreadMembersList.join('、')) : '<span class="text-emerald-700 font-bold">全員確認済みです！</span>') + '</div>' +
+                    '</div>' +
+                  '</div>'
+                : '') +
+            '</article>';
+        });
+
+        container.innerHTML = html;
+      }
 
       /* ==================== TAB 1: Attendance Matrix Rendering ==================== */
       window.setMatrixFilter = function (type) {
@@ -1249,7 +1923,6 @@
 
         const visibleMembers = getVisibleSortedMembers(partFilter);
 
-        /* Build Part Groups with Alternating Band Colors & Thick Right Dividers */
         const partGroups = [];
         visibleMembers.forEach(function (m) {
           const last = partGroups[partGroups.length - 1];
@@ -1276,7 +1949,6 @@
           });
         });
 
-        /* Render Table Header (Row 1: Part Names, Row 2: Member Names) */
         let partHeaderCells = '';
         partGroups.forEach(function (grp) {
           const isAlt = grp.groupIndex % 2 === 1;
@@ -1588,6 +2260,7 @@
         const mainSel = document.getElementById('my-member-select');
         if (mainSel && mainSel.value) {
           state.selectedMyMemberId = mainSel.value;
+          persistMyMemberId(state.selectedMyMemberId);
         }
         state.batchPendingStatus = {};
         populateMemberDropdowns();
@@ -2809,6 +3482,10 @@
           async function () {
             try {
               await fbRemove(fbRef(db, DB_ROOT + '/members/' + member._dbKey));
+              if (state.selectedMyMemberId === memberId) {
+                state.selectedMyMemberId = '';
+                persistMyMemberId('');
+              }
               showToast(member.name + 'さんを削除しました');
             } catch (err) {
               console.error(err);
@@ -2892,7 +3569,7 @@
       window.closeConfirmModal = function () {
         state.confirmCallback = null;
         document.getElementById('modal-confirm').classList.add('hidden');
-        const anyOtherOpen = ['modal-cell-input', 'modal-bulk-input', 'modal-summary', 'modal-edit-schedule', 'modal-edit-member', 'modal-backup']
+        const anyOtherOpen = ['modal-cell-input', 'modal-bulk-input', 'modal-summary', 'modal-edit-schedule', 'modal-edit-member', 'modal-backup', 'modal-announcements']
           .some(function (id) { return !document.getElementById(id).classList.contains('hidden'); });
         if (!anyOtherOpen) {
           document.getElementById('modal-backdrop').classList.add('hidden');
@@ -2919,7 +3596,8 @@
           'modal-edit-schedule',
           'modal-edit-member',
           'modal-backup',
-          'modal-confirm'
+          'modal-confirm',
+          'modal-announcements'
         ].forEach(function (id) {
           const el = document.getElementById(id);
           if (el) el.classList.add('hidden');
