@@ -449,20 +449,31 @@
           <!-- Populated by JS -->
         </div>
 
-        <!-- Performance Repertoire / Cut Notes -->
-        <div id="summary-repertoire-box" class="p-3 rounded-xl bg-amber-50/70 border border-amber-200 space-y-2">
-          <div class="flex items-center justify-between">
-            <label for="summary-repertoire-input" class="text-xs font-bold text-amber-950 flex items-center gap-1.5">
+        <!-- Performance Repertoire / Cut Notes (Tap to Expand for Easy Reading) -->
+        <div id="summary-repertoire-box" onclick="window.expandSummaryRepertoire()"
+          class="p-3 rounded-xl bg-amber-50/70 border border-amber-200 space-y-2 transition-all cursor-pointer">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <label for="summary-repertoire-input" class="text-xs font-bold text-amber-950 flex items-center gap-1.5 cursor-pointer">
               <i class="fa-solid fa-book-open text-amber-600"></i>
               <span>曲目・カット・連絡詳細</span>
+              <span id="summary-repertoire-tap-hint" class="text-[10px] font-bold text-amber-800 bg-amber-200/70 px-1.5 py-0.5 rounded">タップで拡大</span>
             </label>
-            <button type="button" onclick="window.saveSummaryRepertoire()"
-              class="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold transition">
-              詳細を保存
-            </button>
+            <div class="flex items-center gap-1.5 shrink-0">
+              <button type="button" id="summary-repertoire-collapse-btn" onclick="event.stopPropagation(); window.collapseSummaryRepertoire()"
+                class="hidden px-2.5 py-1 rounded-lg bg-white border border-amber-300 hover:bg-amber-100 text-amber-900 text-[11px] font-bold transition">
+                <i class="fa-solid fa-compress mr-0.5"></i>元のサイズに戻す
+              </button>
+              <button type="button" onclick="event.stopPropagation(); window.saveSummaryRepertoire()"
+                class="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold transition">
+                詳細を保存
+              </button>
+            </div>
           </div>
-          <textarea id="summary-repertoire-input" rows="2" placeholder="曲順、カット箇所、集合・搬入の補足などを記録できます"
-            class="w-full p-2 rounded-lg border border-amber-300 bg-white text-xs text-slate-800 focus:outline-none focus:border-amber-600"></textarea>
+          <textarea id="summary-repertoire-input" rows="2"
+            onfocus="window.expandSummaryRepertoire()"
+            onclick="event.stopPropagation(); window.expandSummaryRepertoire()"
+            placeholder="曲順、カット箇所、集合・搬入の補足などを記録できます（タップで枠が広がります）"
+            class="w-full p-2 rounded-lg border border-amber-300 bg-white text-xs text-slate-800 leading-relaxed focus:outline-none focus:border-amber-600 transition-all"></textarea>
         </div>
 
         <!-- Transport Breakdown (Shown for 本番 schedules) -->
@@ -937,6 +948,7 @@
         cellModalTarget: { scheduleId: '', memberId: '', status: '', transport: '' },
         batchPendingStatus: {},
         summaryScheduleId: '',
+        repertoireExpanded: false,
         expandedAnnouncementReaders: {},
         batchCards: [],
         confirmCallback: null,
@@ -1104,7 +1116,6 @@
         const myId = state.selectedMyMemberId;
         const me = myId ? state.members[myId] : null;
         if (!me) {
-          // 名前未選択時は掲載中のお知らせ件数を未読として通知（既読登録すると消える）
           return activeAnns.length;
         }
 
@@ -2495,10 +2506,50 @@
       };
 
       /* ==================== MODAL C: Schedule Summary & Part Breakdown ==================== */
+      function applySummaryRepertoireSizeUI() {
+        const box = document.getElementById('summary-repertoire-box');
+        const input = document.getElementById('summary-repertoire-input');
+        const hint = document.getElementById('summary-repertoire-tap-hint');
+        const collapseBtn = document.getElementById('summary-repertoire-collapse-btn');
+        if (!box || !input) return;
+
+        if (state.repertoireExpanded) {
+          box.className = 'p-3.5 rounded-xl bg-amber-50 border-2 border-amber-400 shadow-sm space-y-2 transition-all';
+          input.rows = 11;
+          input.className = 'w-full p-3 rounded-xl border border-amber-400 bg-white text-sm text-slate-900 leading-relaxed min-h-[240px] focus:outline-none focus:border-amber-600 transition-all';
+          if (hint) hint.classList.add('hidden');
+          if (collapseBtn) collapseBtn.classList.remove('hidden');
+        } else {
+          box.className = 'p-3 rounded-xl bg-amber-50/70 border border-amber-200 space-y-2 transition-all cursor-pointer';
+          input.rows = 2;
+          input.className = 'w-full p-2 rounded-lg border border-amber-300 bg-white text-xs text-slate-800 leading-relaxed focus:outline-none focus:border-amber-600 transition-all';
+          if (hint) hint.classList.remove('hidden');
+          if (collapseBtn) collapseBtn.classList.add('hidden');
+        }
+      }
+
+      window.expandSummaryRepertoire = function () {
+        if (state.repertoireExpanded) return;
+        state.repertoireExpanded = true;
+        applySummaryRepertoireSizeUI();
+        const box = document.getElementById('summary-repertoire-box');
+        if (box && typeof box.scrollIntoView === 'function') {
+          setTimeout(function () {
+            box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }, 50);
+        }
+      };
+
+      window.collapseSummaryRepertoire = function () {
+        state.repertoireExpanded = false;
+        applySummaryRepertoireSizeUI();
+      };
+
       window.openSummaryModal = function (scheduleId) {
         const sched = state.schedules[scheduleId];
         if (!sched) return;
         state.summaryScheduleId = scheduleId;
+        state.repertoireExpanded = false;
         renderSummaryModalContent(scheduleId);
 
         document.getElementById('modal-backdrop').classList.remove('hidden');
@@ -2548,7 +2599,11 @@
           '<div><div class="text-[11px] font-bold text-rose-600">× 欠席</div><div class="text-lg font-bold text-rose-700">' + totAbsent + '<span class="text-xs">名</span></div></div>' +
           '<div><div class="text-[11px] font-bold text-slate-500">未入力</div><div class="text-lg font-bold text-slate-700">' + totUnanswered + '<span class="text-xs">名</span></div></div>';
 
-        document.getElementById('summary-repertoire-input').value = sched.repertoire || '';
+        const repInput = document.getElementById('summary-repertoire-input');
+        if (repInput && document.activeElement !== repInput) {
+          repInput.value = sched.repertoire || '';
+        }
+        applySummaryRepertoireSizeUI();
 
         const transportSection = document.getElementById('summary-transport-section');
         if (isPerf) {
@@ -3586,6 +3641,7 @@
 
       window.closeAllModals = function () {
         state.summaryScheduleId = '';
+        state.repertoireExpanded = false;
         state.confirmCallback = null;
         state.batchPendingStatus = {};
         document.getElementById('modal-backdrop').classList.add('hidden');
