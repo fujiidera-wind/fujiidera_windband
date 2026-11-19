@@ -3,7 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>藤井寺市民音楽団 出席・日程管理</title>
+  <meta name="application-name" content="ふじスケ">
+  <meta name="apple-mobile-web-app-title" content="ふじスケ">
+  <title>ふじスケ｜藤井寺市民音楽団 出席・日程管理</title>
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Google Fonts: Noto Sans JP & Inter -->
@@ -98,7 +100,10 @@
             </span>
           </button>
           <div class="min-w-0 flex-1">
-            <h1 class="text-sm sm:text-lg font-bold tracking-tight truncate">藤井寺市民音楽団 出席・日程管理</h1>
+            <h1 class="text-base sm:text-lg font-bold tracking-tight truncate flex items-baseline gap-1.5">
+              <span>ふじスケ</span>
+              <span class="text-[11px] sm:text-xs font-medium text-emerald-200 truncate">｜藤井寺市民音楽団 出席・日程管理</span>
+            </h1>
             <div class="flex items-center gap-2 mt-0.5 min-w-0">
               <button type="button" id="sync-status-badge" onclick="window.openAnnouncementsModal()"
                 class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/20 text-amber-200 border border-amber-400/30 transition cursor-pointer max-w-full truncate">
@@ -690,7 +695,7 @@
       <div class="px-4 py-3.5 bg-slate-800 text-white flex items-center justify-between">
         <h3 class="font-bold text-base flex items-center gap-2">
           <i class="fa-solid fa-database text-emerald-400"></i>
-          <span>データの保存 / 復元</span>
+          <span>ふじスケ データの保存 / 復元</span>
         </h3>
         <button type="button" onclick="window.closeAllModals()" class="w-9 h-9 rounded-full bg-slate-700 hover:bg-slate-600 text-white flex items-center justify-center">
           <i class="fa-solid fa-xmark"></i>
@@ -752,7 +757,7 @@
           </div>
           <div class="min-w-0">
             <h3 class="font-bold text-base flex items-center gap-2">
-              <span>団内お知らせ</span>
+              <span>お知らせ</span>
               <span id="ann-modal-header-count" class="px-2 py-0.5 rounded-full bg-emerald-700 text-emerald-100 text-[11px] font-bold">0件</span>
             </h3>
             <p class="text-[11px] text-emerald-200 truncate">掲載期限を過ぎたお知らせは自動削除されます</p>
@@ -1733,7 +1738,7 @@
         const targetNames = (ann.targets || []).map(function (t) { return TARGET_GROUP_LABELS[t] || t; }).join('・');
         const expInfo = formatDateInfo(ann.expireDate);
         const lines = [
-          '【藤井寺市民音楽団 お知らせ】',
+          '【ふじスケ｜藤井寺市民音楽団 お知らせ】',
           '■ ' + ann.title,
           ann.body,
           '',
@@ -1743,7 +1748,7 @@
         if (ann.author) {
           lines.push('発信：' + ann.author);
         }
-        lines.push('▼出欠表・確認はこちら');
+        lines.push('▼「ふじスケ」で出欠表・詳細を確認');
         lines.push(window.location.href);
 
         const shareText = lines.join('\n');
@@ -3655,7 +3660,7 @@
 
       window.downloadBackupJson = function () {
         const todayStr = getTodayString();
-        const filename = '藤井寺市民音楽団_データバックアップ_' + todayStr + '.json';
+        const filename = 'ふじスケ_藤井寺市民音楽団_データバックアップ_' + todayStr + '.json';
         const jsonStr = JSON.stringify(state.rawSnapshot || {}, null, 2);
         const blob = new Blob([jsonStr], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
